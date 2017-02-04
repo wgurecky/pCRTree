@@ -27,11 +27,11 @@ class BiNode(object):
         self.maxDepth = maxDepth
         self.minSplitPts = minSplitPts
         # Make x 2D array
-        if len(x.shape) == 0:
+        if len(x.shape) == 1:
             x = np.array([x]).T
         self.ndim = x.shape[1]
-        if len(y.shape) != 0:
-            raise RuntimeError
+        if len(y.shape) != 1:
+            raise RuntimeError("ERROR: Y data must be 1d")
 
         # training data storage
         self.x, self.y = x, y
@@ -40,19 +40,19 @@ class BiNode(object):
         self._yhat = yhat
         self._spl, self._spd = None, None
 
-    @property(self):
+    @property
     def spl(self):
         return self._spl
 
-    @property.setter
+    @spl.setter
     def spl(self, spl):
         self._spl = spl
 
-    @property(self):
+    @property
     def spd(self):
         return self._spd
 
-    @property.setter
+    @spd.setter
     def spd(self, spd):
         self._spd = spd
 
@@ -95,7 +95,7 @@ class BiNode(object):
         """!
         @brief Determine all possible split locations in all dimensions
         """
-        testSplits = np.zeros(np.shape(self.x)[0] - 1, np.shape(self.x)[1])
+        testSplits = np.zeros((np.shape(self.x)[0] - 1, np.shape(self.x)[1]))
         for i, d in enumerate(self.x.T):
             suD = np.unique(np.sort(d))
             # compute all possible split locs
@@ -125,7 +125,7 @@ class BiNode(object):
         leftMask = (x[:, d] < spl)
         rightMask = (x[:, d] >= spl)
         leftExpl = x[leftMask]
-        rightExpl = x[leftMask]
+        rightExpl = x[rightMask]
         if y is not None:
             leftData = y[leftMask]
             rightData = y[rightMask]

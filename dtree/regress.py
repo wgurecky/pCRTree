@@ -1,11 +1,14 @@
+#!/usr/bin/python3
+
+import numpy as np
 from node import BiNode
 
 class RegTree(BiNode):
     """!
     @brief Regression tree
     """
-    def __init__(self, x, y, yhat=None, level=0, minSplitPts=5):
-        super().__init__(x, y, yhat, level, minSplitPts)
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5):
+        super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
 
     def predict(self, testX):
         """!
@@ -14,25 +17,32 @@ class RegTree(BiNode):
         Traverse the tree and provide leaf node predictions
         @param testX numpy nd_array of ints or floats
         """
-        if len(np.shape(testX)) == 0:
+        if len(np.shape(testX)) == 1:
             testX = np.array([testX]).T
         if testX.shape[1] != self.ndim:
             print("ERROR: dimension mismatch.")
             raise RuntimeError
-        self.testX = []
-        self.testY = []
-        self.nodePredict(testX)
-        return self.testX, self.testY
+        xHat, yHat = self.nodePredict(testX)
+        return xHat, yHat
 
-    def nodePredict(self, testX):
+    def nodePredict(self, testX, xHat=np.array([[]]), yHat=np.array([])):
         if self._nodes != (None, None):
             leftX, _l, rightX, _r = self._maskData(self._spl, self._spd, testX)
-            self._nodes[0].nodePredict(leftX)
-            self._nodes[1].nodePredict(rightX)
+            lxh, lyh = self._nodes[0].nodePredict(leftX, xHat, yHat)
+            rxh, ryh = self._nodes[1].nodePredict(rightX, xHat, yHat)
+            try:
+                return np.vstack((xHat, lxh, rxh)), np.hstack((yHat, lyh, ryh))
+            except:
+                return np.vstack((lxh, rxh)), np.hstack((lyh, ryh))
         else:
-            self.testX.append(testX)
-            self.testY.append(self._yhat * np.ones(len(testX)))
-            return
+            # is leaf node
+            if xHat.shape[1] == 0:
+                xHat = testX
+                yHat = self._yhat * np.ones(len(testX))
+            else:
+                xHat = np.vstack((xHat, testX))
+                yHat = np.hstack((yHat, self._yhat * np.ones(len(testX))))
+            return xHat, yHat
 
     def _regionFit(self, region_x, region_y, lossFn="squared"):
         """!
@@ -51,7 +61,7 @@ class RegTree(BiNode):
         @brief Evaluates if split is favorable (or possible under provided
         stopping criteria)
         """
-        if len(self.y) >= self.minSplitPts and self.level <= self.maxDepth:
+        if len(self.y) >= self.minSplitPts and self.level < self.maxDepth:
             return True
         else:
             return False
@@ -79,3 +89,26 @@ class RegTree(BiNode):
             rightNode = RegTree(splitData[2], splitData[3], rYhat, self.level + 1, self.maxDepth)
             self._nodes = (leftNode, rightNode)
             return 1
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    # run simple 1d regression tree example
+    n = 100
+    x = np.linspace(0, 2 * np.pi, n)
+    y = np.sin(x)
+    yNoise = np.random.uniform(0, 0.0001, n)
+    y = y + yNoise
+    regressionTree = RegTree(x, y)
+    regressionTree.fitTree()
+
+    # predict
+    xTest = np.linspace(0, 2 * np.pi, n * 2)
+    xhat, yhat = regressionTree.predict(xTest)
+
+    # plot
+    plt.figure()
+    plt.plot(x, y, label="Train Data")
+    plt.plot(xhat, yhat, label="Reg Tree")
+    plt.legend()
+    plt.show()
