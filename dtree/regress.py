@@ -66,7 +66,7 @@ class RegTree(BiNode):
         else:
             return False
 
-    def splitNode(self):
+    def splitNode(self, cleanUp=True):
         """!
         @brief Partition the data in the current node.
         Create new nodes with partitioned data sets.
@@ -88,6 +88,7 @@ class RegTree(BiNode):
             leftNode = RegTree(splitData[0], splitData[1], lYhat, self.level + 1, self.maxDepth)
             rightNode = RegTree(splitData[2], splitData[3], rYhat, self.level + 1, self.maxDepth)
             self._nodes = (leftNode, rightNode)
+            if cleanUp: self.delData()
             return 1
 
 
@@ -109,6 +110,6 @@ if __name__ == "__main__":
     # plot
     plt.figure()
     plt.plot(x, y, label="Train Data")
-    plt.plot(xhat, yhat, label="Reg Tree")
+    plt.plot(xhat[:, 0], yhat, label="Reg Tree")
     plt.legend()
     plt.show()

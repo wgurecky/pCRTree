@@ -122,8 +122,8 @@ class BiNode(object):
         @param x  Explanatory variables nd_array
         @param y  Response vars 1d_array
         """
-        leftMask = (x[:, d] < spl)
-        rightMask = (x[:, d] >= spl)
+        leftMask = (x[:, int(d)] < spl)
+        rightMask = (x[:, int(d)] >= spl)
         leftExpl = x[leftMask]
         rightExpl = x[rightMask]
         if y is not None:
