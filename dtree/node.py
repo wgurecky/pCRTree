@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 ##!
 # @brief Binary CART tree node
 # @author William Gurecky
@@ -95,12 +94,15 @@ class BiNode(object):
         """!
         @brief Determine all possible split locations in all dimensions
         """
-        testSplits = np.zeros((np.shape(self.x)[0] - 1, np.shape(self.x)[1]))
-        for i, d in enumerate(self.x.T):
-            suD = np.unique(np.sort(d))
+        #TODO: FIX: you dont know number of splits before hand
+        # number of splits can differ in each dimension
+        # testSplits = np.zeros((np.shape(self.x)[0] - 1, np.shape(self.x)[1]))
+        testSplits = []
+        for i, data in enumerate(self.x.T):
+            suD = np.unique(np.sort(data))
             # compute all possible split locs
             splits = np.mean((suD[1:], suD[:-1]), axis=0)
-            testSplits[:, i] = splits
+            testSplits.append(splits)
         return testSplits
 
     def iterSplitData(self):
@@ -109,7 +111,7 @@ class BiNode(object):
         """
         testSplits = self.splitLocs()
         for d in range(np.shape(self.x)[1]):
-            for spl in testSplits.T[d]:
+            for spl in testSplits[d]:
                 leftExpl, leftData, rightExpl, rightData = self._maskData(spl, d, self.x, self.y)
                 yield ([leftExpl, leftData], [rightExpl, rightData], d, spl)
 

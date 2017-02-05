@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-
 import numpy as np
-from node import BiNode
+from dtree.node import BiNode
+
 
 class RegTree(BiNode):
     """!
@@ -94,22 +94,27 @@ class RegTree(BiNode):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    import seaborn as sns
     # run simple 1d regression tree example
     n = 100
     x = np.linspace(0, 2 * np.pi, n)
     y = np.sin(x)
-    yNoise = np.random.uniform(0, 0.0001, n)
+    yNoise = np.random.uniform(0, 0.1, n)
     y = y + yNoise
-    regressionTree = RegTree(x, y)
+    regressionTree = RegTree(x, y, maxDepth=4)
     regressionTree.fitTree()
+    regressionTree3 = RegTree(x, y, maxDepth=3)
+    regressionTree3.fitTree()
 
     # predict
     xTest = np.linspace(0, 2 * np.pi, n * 2)
     xhat, yhat = regressionTree.predict(xTest)
+    xhat3, yhat3 = regressionTree3.predict(xTest)
 
     # plot
     plt.figure()
     plt.plot(x, y, label="Train Data")
-    plt.plot(xhat[:, 0], yhat, label="Reg Tree")
+    plt.plot(xhat[:, 0], yhat, label="Tree Depth=4")
+    plt.plot(xhat3[:, 0], yhat3, label="Tree Depth=3")
     plt.legend()
     plt.show()
