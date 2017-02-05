@@ -1,7 +1,12 @@
 About
 ======
 
-Classification and regression tree algorithms.
+Decision tree and gradient boosting algorithms.
+
+pCRTree is split into two subpackages:
+
+- dtree: Classification and regression trees.
+- boosting: Gradient boosting methods.
 
 Install
 ========
