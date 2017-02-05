@@ -117,4 +117,4 @@ if __name__ == "__main__":
     plt.plot(xhat[:, 0], yhat, label="Tree Depth=4")
     plt.plot(xhat3[:, 0], yhat3, label="Tree Depth=3")
     plt.legend()
-    plt.show()
+    plt.savefig('1d_regression_ex.png')
