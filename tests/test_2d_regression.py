@@ -26,12 +26,11 @@ class Test2dRegression(unittest.TestCase):
 
         # plot training data
         try:
-            #plt.figure(0)
-            #plt.pcolor(X1 / (np.pi * 2), X2 / (np.pi * 2), Z, cmap=cm.RdBu, vmin=abs(Z).min(), vmax=abs(Z).max())
-            #plt.colorbar()
-            #plt.savefig('train_2d_regress.png')
-            #plt.close()
-            pass
+            plt.figure(0)
+            plt.pcolor(X1 / (np.pi * 2), X2 / (np.pi * 2), Z, cmap=cm.RdBu, vmin=abs(Z).min(), vmax=abs(Z).max())
+            plt.colorbar()
+            plt.savefig('train_2d_regress.png')
+            plt.close()
         except:
             pass
         print("Done with setup")

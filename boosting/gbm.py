@@ -31,6 +31,7 @@ class GBRTmodel(object):
         self.maxTreeDepth = 3
         self.learning_rate = learning_rate
         self.subsample = subsample
+        self.lossFn = lossFn
         #
         self._trees = [None]
         self._treeWeights = [1.0]
@@ -146,7 +147,7 @@ class GBRTmodel(object):
     def testErr(self, xTest, yTest, loss='se'):
         return np.sum(self._seLoss(yTest, self.predict(xTest))) / len(yTest)
 
-    def nablaLoss(self, y, yHat, loss='se'):
+    def nablaLoss(self, y, yHat):
         """!
         @brief Jacobian of loss function. Computes:
         \f[
@@ -156,7 +157,7 @@ class GBRTmodel(object):
         @param yHat  (1d_ndarray) predicted responses
         @param loss (str) Loss function name
         """
-        if loss is 'se':
+        if self.lossFn is 'se':
             return (y - yHat)
         else:
             raise NotImplementedError

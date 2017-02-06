@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 from boosting.gbm import GBRTmodel
+from scipy.interpolate import griddata
+from pylab import cm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import unittest
@@ -39,6 +41,14 @@ class TestGradBoosting(unittest.TestCase):
         self.xTrain, self.xTest, self.yTrain, self.yTest = \
            gen_data()
 
+        #2d data
+        x1 = np.linspace(0, 2 * np.pi, 100)
+        x2 = np.linspace(0, 2 * np.pi, 100)
+        X1, X2 = np.meshgrid(x1, x2)
+        Z = flux_qbit_pot(X1, X2).T
+        self.x = np.array([X1.flatten(), X2.flatten()]).T
+        self.y = Z.flatten()
+
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
         iters = 30
@@ -50,9 +60,40 @@ class TestGradBoosting(unittest.TestCase):
         yhat = gbt.predict(xTest)
 
         # plot
-        plt.figure()
+        plt.figure(1)
         plt.plot(self.xTrain, self.yTrain, marker='.', linestyle="None", label="Train Data")
         plt.plot(self.xTest, self.yTest, marker='.', linestyle="None", label="Test Data")
         plt.plot(xTest, yhat, label="Iter=" + str(iters))
         plt.legend(loc=0)
         plt.savefig('1d_boosted_regression_ex.png')
+        plt.close()
+
+    def test2dBoostedReg(self):
+        iters = 30
+        gbt = GBRTmodel(maxTreeDepth=2, learning_rate=0.7, subsample=1.0)
+
+        # generate testing input
+        x1 = np.linspace(0, 2 * np.pi, 50)
+        x2 = np.linspace(0, 2 * np.pi, 50)
+        X1, X2 = np.meshgrid(x1, x2)
+        xTest = np.array([X1.flatten(), X2.flatten()]).T
+
+        # fit 2d boosted regression tree
+        gbt.train(self.x, self.y, maxIterations=iters)
+        zHat = gbt.predict(xTest)
+
+        # plot
+        x1grid = np.linspace(xTest[:, 0].min(), xTest[:, 0].max(), 200)
+        x2grid = np.linspace(xTest[:, 1].min(), xTest[:, 1].max(), 200)
+        x1grid, x2grid = np.meshgrid(x1grid, x2grid)
+        zgrid = griddata((xTest[:, 0], xTest[:, 1]), values=zHat, xi=(x1grid, x2grid), method='nearest')
+        plt.figure(2)
+        plt.pcolor(x1grid / (np.pi * 2), x2grid / (np.pi * 2), zgrid, cmap=cm.RdBu, vmin=abs(zgrid).min(), vmax=abs(zgrid).max())
+        plt.colorbar()
+        plt.savefig('2d_boosted_regression_ex.png')
+        plt.close()
+
+
+def flux_qbit_pot(phi_m, phi_p):
+    alpha, phi_ext = 0.7, 2 * np.pi * 0.5
+    return 2 + alpha - 2 * np.cos(phi_p) * np.cos(phi_m) - alpha * np.cos(phi_ext - 2 * phi_p)
