@@ -110,9 +110,11 @@ class GBRTmodel(object):
         self._treeWeights = [1.0]
         self._F = self._trees[0].predict(self.x)
         for i in range(maxIterations):
+            # def sub sample training set
+            sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
             # fit learner to pseudo-residuals
-            self._trees.append(RegTree(self.x,
-                                       self.nablaLoss(self.y, self._F),
+            self._trees.append(RegTree(self.x[sub_idx],
+                                       self.nablaLoss(self.y[sub_idx], self._F[sub_idx]),
                                        maxDepth=self.maxTreeDepth,
                                        )
                               )
