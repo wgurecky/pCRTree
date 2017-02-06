@@ -8,6 +8,7 @@ import numpy as np
 from scipy.optimize import minimize
 from dtree.regress import RegTree
 
+
 class GBRTmodel(object):
     """!
     @brief Gradient boosted regression tree model.
@@ -16,33 +17,42 @@ class GBRTmodel(object):
     - shrinkage via tunable learning rate
     - stochastic gradient boosting
     """
-    def __init__(self, x, y, maxTreeDepth=3, lossFn='se'):
+    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='se'):
         """!
-        @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
-        @param y (1d_array) Response variable vector. Shape = (Ndims,)
         @param maxTreeDepth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
+        @param learning_rate  Scale the influence of each tree in model:
+            Model is updated acording to \f[ F = F_{m-1} + lr (R_m) \f]
+            Where \f[R_m \f] are the residuals prediced by the mth tree
+        @param subsample  Fraction of avalible data used for training in any given
+            boosted iteration.
         @param lossFn  Target function to minimize at each iteration of boosting
         """
         self.maxTreeDepth = 3
-        self.x = x
-        self.y = y
-        # init 0th tree in gbm model
-        self._trees = [ConstModel(x, y)]
+        self.learning_rate = learning_rate
+        self.subsample = subsample
+        #
+        self._trees = [None]
         self._treeWeights = [1.0]
-        # value of output regression surface at self.x
-        self._F = self._trees[0].predict(self.x)[1]
+        self._F = np.array([])
 
-    def predict(self, testx):
+    def predict(self, testX):
+        """!
+        @brief Evaluate gradient boosted regression tree model.
+        @param testX (nd_array) evaluate model at these points
+        """
         if len(np.shape(testX)) == 1:
             testX = np.array([testX]).T
         fHat = np.zeros(testX.shape[0])
-        for weight, tree in zip(self._treeWeight, self._trees):
-            fHat += weight * tree.predict(testX)[1]
+        for weight, tree in zip(self._treeWeights, self._trees):
+            fHat += weight * tree.predict(testX)
         return fHat
 
     @property
     def F(self):
+        """!
+        @brief 1d_array Stored response surface vector
+        """
         return self._F
 
     def getTrainingSurface(self):
@@ -56,7 +66,7 @@ class GBRTmodel(object):
     def trees(self):
         return self._trees
 
-    def train(self, learning_rate=1.0, subset=0.7, maxIterations=5):
+    def train(self, x, y, maxIterations=5, warmStart=0, **kwargs):
         """!
         @brief Train the regression tree model by the gradient boosting
         method.
@@ -80,29 +90,48 @@ class GBRTmodel(object):
         \f[
         F_{m} = F_{m-1} + \gamma_m F_m
         \f]
-        @param learning_rate  Scale the influence of each tree in model:
-            Model is updated acording to \f[ F = F_{m-1} + lr (R_m) \f]
-            Where \f[R_m \f] are the residuals prediced by the mth tree
-        @param subset  Fraction of avalible data used for training in any given
-            boosted iteration.
-        @@param maxIterations  Max number of boosted iterations.
+        @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
+        @param y (1d_array) Response variable vector. Shape = (Ndims,)
+        @param maxIterations  Max number of boosted iterations.
         """
-        print("Iteration | Training Err | Tree weight ")
-        print("========================================")
+        xTest = kwargs.get("xTest", None)
+        yTest = kwargs.get("yTest", None)
+        if xTest is not None and yTest is not None:
+            print("Iteration | Training Err | Testing Err  | Tree weight ")
+            print("======================================================")
+        else:
+            print("Iteration | Training Err | Tree weight ")
+            print("========================================")
+        # Reset model
+        self.x = x
+        self.y = y
+        self._trees = [ConstModel(x, y)]
+        self._treeWeights = [1.0]
+        self._F = self._trees[0].predict(self.x)
         for i in range(maxIterations):
             # fit learner to pseudo-residuals
             self._trees.append(RegTree(self.x,
-                                      -self.nablaLoss(self.F()),
-                                      maxDepth=self.maxTreeDepth,
-                                      )
+                                       self.nablaLoss(self.y, self._F),
+                                       maxDepth=self.maxTreeDepth,
+                                       )
                               )
             self._trees[-1].fitTree()
             # define minimization problem
-            lossSum = lambda gamma: np.sum(self._seLoss(gamma * self._trees[-1].predict(self.x)[1]))
-            gamma_ = minimize(lossSumm, 1.0, method='SLSQP').x[0]
-            self._treeWeights.append(gamma_)
-            self._F = self._F + gamma_ * learning_rate * self._trees[-1].predict(self.x)[1]
-            print(str(i) + " |  " + str(self.trainErr(i)) + " |  " + str(gamma_))
+            lossSum = lambda gamma: np.sum(self._seLoss(self.y, self._F + gamma * self._trees[-1].predict(self.x)))
+            # find optimal step size in direction of steepest descent
+            res = minimize(lossSum, 0.8, method='SLSQP')
+            if "successfully." not in res.message:
+                print(res.message)
+            gamma_ = res.x[0]
+            self._treeWeights.append(self.learning_rate * gamma_)
+            self._F = self._F + gamma_ * self.learning_rate * self._trees[-1].predict(self.x)
+            # Compute Test Err if test data avalilbe
+            if xTest is not None and yTest is not None:
+                tstErr = self.testErr(xTest, yTest)
+                print(" %4d     | %4e | %4e | %.3f" % (i, self.trainErr(),  tstErr, gamma_))
+            else:
+                print(" %4d     | %4e | %.3f " % (i, self.trainErr(), gamma_))
+
 
     def trainErr(self, loss='se'):
         """!
@@ -112,9 +141,12 @@ class GBRTmodel(object):
         \f]
         return (float) training error
         """
-        return np.sum(self._seLoss(self._F))
+        return np.sum(self._seLoss(self.y, self._F)) / len(self.y)
 
-    def nablaLoss(self, yHat, loss='se'):
+    def testErr(self, xTest, yTest, loss='se'):
+        return np.sum(self._seLoss(yTest, self.predict(xTest))) / len(yTest)
+
+    def nablaLoss(self, y, yHat, loss='se'):
         """!
         @brief Jacobian of loss function. Computes:
         \f[
@@ -125,18 +157,18 @@ class GBRTmodel(object):
         @param loss (str) Loss function name
         """
         if loss is 'se':
-            return (self.y - yHat) * 0.5
+            return (y - yHat)
         else:
             raise NotImplementedError
 
-    def _seLoss(self, yHat):
+    def _seLoss(self, y, yHat):
         """!
         @brief Squared error loss function.
         @param yHat  (1d_ndarray) predicted responses
         @return 1d_array  \f[ L = (y_i - \hat y_i) **2) \f]
         """
         # No need to divide by N here, outcome of minimization is the same
-        return (self.y - yHat) ** 2.0
+        return (y - yHat) ** 2.0
 
 
 class ConstModel(object):
