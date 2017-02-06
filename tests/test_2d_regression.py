@@ -49,13 +49,13 @@ class Test2dRegression(unittest.TestCase):
         # fit 2d regression tree
         regTree2D = RegTree(self.x, self.y, maxDepth=12)
         regTree2D.fitTree()
-        xHat, zHat = regTree2D.predict(xTest)
+        zHat = regTree2D.predict(xTest)
 
         # plot
-        x1grid = np.linspace(xHat[:, 0].min(), xHat[:, 0].max(), 200)
-        x2grid = np.linspace(xHat[:, 1].min(), xHat[:, 1].max(), 200)
+        x1grid = np.linspace(xTest[:, 0].min(), xTest[:, 0].max(), 200)
+        x2grid = np.linspace(xTest[:, 1].min(), xTest[:, 1].max(), 200)
         x1grid, x2grid = np.meshgrid(x1grid, x2grid)
-        zgrid = griddata((xHat[:, 0], xHat[:, 1]), values=zHat, xi=(x1grid, x2grid), method='nearest')
+        zgrid = griddata((xTest[:, 0], xTest[:, 1]), values=zHat, xi=(x1grid, x2grid), method='nearest')
         try:
             plt.figure(1)
             plt.pcolor(x1grid / (np.pi * 2), x2grid / (np.pi * 2), zgrid, cmap=cm.RdBu, vmin=abs(zgrid).min(), vmax=abs(zgrid).max())

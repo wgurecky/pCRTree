@@ -8,40 +8,64 @@ class RegTree(BiNode):
     @brief Regression tree
     """
     def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5):
+        """!
+        @param x nd_array of integers or floats shape = (Npts, D)
+        @param y 1d_array of integers or floats
+        @param yhat (float) constant prediction value in node
+        @param level int level of node in the tree
+        @param maxDepth maximum number of levels in descission tree
+        @param minSplitPts minimum number of points in node to be considered
+            for further splitting.
+        """
         super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
 
     def predict(self, testX):
         """!
-        @brief Given some testing input, return CART tree
-        predictions.
-        Traverse the tree and provide leaf node predictions
-        @param testX numpy nd_array of ints or floats
+        @brief Given some testing input return regression tree predictions.
+        Traverses the tree recursively and provides leaf node predictions.
+        @param testX nd_array of ints or floats.  Test explanatory input array
+        @return 1d_array y_hat (len=len(testX)) prediction array
         """
         if len(np.shape(testX)) == 1:
             testX = np.array([testX]).T
         if testX.shape[1] != self.ndim:
             print("ERROR: dimension mismatch.")
             raise RuntimeError
-        xHat, yHat = self.nodePredict(testX)
-        return xHat, yHat
+        # xHat, yHat = self.nodePredict(testX)
+        oIdx = np.arange(len(testX))
+        xHat, yHat, xIdx = self.bNodePredict(testX, np.arange(len(testX)))
+        if not np.array_equal(testX[xIdx], xHat):
+            print("WARNING: Shifted output order!")
+        shift = np.lexsort((oIdx, xIdx))
+        return yHat[shift]
 
-    def nodePredict(self, testX, xHat=np.array([[]]), yHat=np.array([])):
+    def bNodePredict(self, testX, testXIdx):
+        """!
+        @brief Recursively evaluate internal node splits and leaf predictions.
+        @return (xOut, yOut, xIdx_Out)
+            indicies of original X vector and corrosponding resopnse Y
+        """
         if self._nodes != (None, None):
-            leftX, _l, rightX, _r = self._maskData(self._spl, self._spd, testX)
-            lxh, lyh = self._nodes[0].nodePredict(leftX, xHat, yHat)
-            rxh, ryh = self._nodes[1].nodePredict(rightX, xHat, yHat)
-            try:
-                return np.vstack((xHat, lxh, rxh)), np.hstack((yHat, lyh, ryh))
-            except:
-                return np.vstack((lxh, rxh)), np.hstack((lyh, ryh))
+            leftX, lIdX, rightX, rIdX = self._maskData(self._spl, self._spd, testX, testXIdx)
+            lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
+            rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
+            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
         else:
             # is leaf node
-            if xHat.shape[1] == 0:
-                xHat = testX
-                yHat = self._yhat * np.ones(len(testX))
-            else:
-                xHat = np.vstack((xHat, testX))
-                yHat = np.hstack((yHat, self._yhat * np.ones(len(testX))))
+            xHat = testX
+            yHat = self._yhat * np.ones(len(testX))
+            return xHat, yHat, testXIdx
+
+    def nodePredict(self, testX):
+        if self._nodes != (None, None):
+            leftX, _l, rightX, _r = self._maskData(self._spl, self._spd, testX)
+            lxh, lyh = self._nodes[0].nodePredict(leftX)
+            rxh, ryh = self._nodes[1].nodePredict(rightX)
+            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh))
+        else:
+            # is leaf node
+            xHat = testX
+            yHat = self._yhat * np.ones(len(testX))
             return xHat, yHat
 
     def _regionFit(self, region_x, region_y, lossFn="squared"):
@@ -54,6 +78,8 @@ class RegTree(BiNode):
         yhat = np.mean(region_y)
         # residual sum squared error
         rsse = np.sum((region_y - yhat) ** 2)
+        # varience (RSSE / N)
+        # var = rsse / len(region_y)
         return rsse, yhat
 
     def _isGoodSplit(self):
@@ -108,13 +134,13 @@ if __name__ == "__main__":
 
     # predict
     xTest = np.linspace(0, 2 * np.pi, n * 2)
-    xhat, yhat = regressionTree.predict(xTest)
-    xhat3, yhat3 = regressionTree3.predict(xTest)
+    yhat = regressionTree.predict(xTest)
+    yhat3 = regressionTree3.predict(xTest)
 
     # plot
     plt.figure()
     plt.plot(x, y, label="Train Data")
-    plt.plot(xhat[:, 0], yhat, label="Tree Depth=4")
-    plt.plot(xhat3[:, 0], yhat3, label="Tree Depth=3")
+    plt.plot(xTest, yhat, label="Tree Depth=4")
+    plt.plot(xTest, yhat3, label="Tree Depth=3")
     plt.legend()
     plt.savefig('1d_regression_ex.png')

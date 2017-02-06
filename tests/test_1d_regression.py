@@ -23,10 +23,10 @@ class Test1dRegression(unittest.TestCase):
 
         # predict
         xTest = np.linspace(0, 2 * np.pi, self.n * 2)
-        xhat, yhat = regressionTree.predict(xTest)
+        yhat = regressionTree.predict(xTest)
 
         # check result
-        self.assertEqual(len(xhat), len(yhat))
+        self.assertEqual(len(xTest), len(yhat))
         self.assertEqual(self.n * 2, len(yhat))
         self.assertAlmostEqual(np.mean(yhat), np.mean(self.y), delta=0.1)
 
@@ -39,17 +39,17 @@ class Test1dRegression(unittest.TestCase):
 
         rd2Tree = RegTree(self.x, self.y, maxDepth=2)
         rd2Tree.fitTree()
-        xhat2, yhat2 = rd2Tree.predict(xTest)
+        yhat2 = rd2Tree.predict(xTest)
         rd2TreeErr = np.linalg.norm(yhat2 - self.y)
         #
         rd3Tree = RegTree(self.x, self.y, maxDepth=3)
         rd3Tree.fitTree()
-        xhat3, yhat3 = rd3Tree.predict(xTest)
+        yhat3 = rd3Tree.predict(xTest)
         rd3TreeErr = np.linalg.norm(yhat3 - self.y)
         #
         rd4Tree = RegTree(self.x, self.y, maxDepth=4)
         rd4Tree.fitTree()
-        xhat4, yhat4 = rd4Tree.predict(xTest)
+        yhat4 = rd4Tree.predict(xTest)
         rd4TreeErr = np.linalg.norm(yhat4 - self.y)
 
         # A larger tree depth should reduce squared errors of predictor

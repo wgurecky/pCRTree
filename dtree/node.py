@@ -16,7 +16,9 @@ class BiNode(object):
         """!
         @param x nd_array of integers or floats shape = (Npts, D)
         @param y 1d_array of integers or floats
+        @param yhat (float) constant prediction value in node
         @param level int level of node in the tree
+        @param maxDepth maximum number of levels in descission tree
         @param minSplitPts minimum number of points in node to be considered
             for further splitting.
         """
