@@ -174,10 +174,6 @@ class BiNode(object):
         """!
         @brief Evaulate region loss fuction:
             - squared errors
-            - L1 errors
-            - gini information
-            - negative gradient
         @return (err, bestFunctionValue)
         """
-        print("ERROR: region loss function not implemented in abstract base class")
         raise NotImplementedError

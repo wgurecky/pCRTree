@@ -118,14 +118,15 @@ class GBRTmodel(object):
                               )
             self._trees[-1].fitTree()
             # define minimization problem
-            lossSum = lambda gamma: np.sum(self._seLoss(self.y, self._F + gamma * self._trees[-1].predict(self.x)))
+            pre_pred_loss = self.trees[-1].predict(self.x)
+            lossSum = lambda gamma: np.sum(self._seLoss(self.y, self._F + gamma * pre_pred_loss))
             # find optimal step size in direction of steepest descent
             res = minimize(lossSum, 0.8, method='SLSQP')
             if "successfully." not in res.message:
                 print(res.message)
             gamma_ = res.x[0]
             self._treeWeights.append(self.learning_rate * gamma_)
-            self._F = self._F + gamma_ * self.learning_rate * self._trees[-1].predict(self.x)
+            self._F = self._F + gamma_ * self.learning_rate * pre_pred_loss
             # Compute Test Err if test data avalilbe
             if xTest is not None and yTest is not None:
                 tstErr = self.testErr(xTest, yTest)
