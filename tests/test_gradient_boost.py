@@ -51,7 +51,7 @@ class TestGradBoosting(unittest.TestCase):
 
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
-        iters = 80
+        iters = 500
         gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.1, subsample=0.7)
         gbt.train(self.xTrain, self.yTrain, maxIterations=iters, xTest=self.xTest, yTest=self.yTest)
 
@@ -70,7 +70,7 @@ class TestGradBoosting(unittest.TestCase):
 
     def test2dBoostedReg(self):
         iters = 40
-        gbt = GBRTmodel(maxTreeDepth=2, learning_rate=0.2, subsample=0.5)
+        gbt = GBRTmodel(maxTreeDepth=3, learning_rate=0.2, subsample=0.5)
 
         # generate testing input
         x1 = np.linspace(0, 2 * np.pi, 50)
