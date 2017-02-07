@@ -1,7 +1,7 @@
 About
 ======
 
-Decision tree and gradient boosting algorithms.
+Boosted classification and regression trees.
 
 pCRTree is split into two subpackages:
 
@@ -13,6 +13,7 @@ Install
 
 Depends:
 
+- python3.2+
 - numpy
 
 For developers:
