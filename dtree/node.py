@@ -34,7 +34,7 @@ class BiNode(object):
         if len(y.shape) != 1:
             raise RuntimeError("ERROR: Y data must be 1d")
 
-        # training data storage
+        # node data
         self.x, self.y = x, y
 
         # predictor storage

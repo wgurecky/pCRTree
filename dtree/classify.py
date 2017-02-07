@@ -135,8 +135,13 @@ if __name__ == "__main__":
                                      n_classes=2, random_state=1)
     X = np.concatenate((X1, X2))
     y = np.concatenate((y1, - y2 + 1))
-    bdt = ClsTree(X, y, maxDepth=50, minSplitPts=5)
+
+    # pCRTree implementation
+    bdt = ClsTree(X, y, maxDepth=5, minSplitPts=5)
     bdt.fitTree()
+    # SKlearn implementation
+    skt = DecisionTreeClassifier(max_depth=5)
+    skt.fit(X, y)
 
     plot_colors = "br"
     plot_step = 0.02
@@ -152,6 +157,7 @@ if __name__ == "__main__":
                          np.arange(y_min, y_max, plot_step))
 
     Z = bdt.predict(np.c_[xx.ravel(), yy.ravel()])
+    # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
     cs = plt.contourf(xx, yy, Z, cmap=plt.cm.Paired)
     plt.axis("tight")
