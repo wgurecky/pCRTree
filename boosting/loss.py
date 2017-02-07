@@ -97,6 +97,10 @@ class HuberLoss(AbastractLoss):
         delta = 1.0
         return delta ** 2. * (np.sqrt(1. + ((y - yhat) / delta) ** 2.)) - 1.
 
+    def gradLoss(self, y, yhat):
+        delta = 1.0
+        return (y - yhat) / np.sqrt(((y - yhat) ** 2 / delta ** 2) + 1)
+
 
 # =========================================================================== #
 # Factory
