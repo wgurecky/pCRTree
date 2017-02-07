@@ -56,30 +56,15 @@ class RegTree(BiNode):
             yHat = self._yhat * np.ones(len(testX))
             return xHat, yHat, testXIdx
 
-    def nodePredict(self, testX):
-        if self._nodes != (None, None):
-            leftX, _l, rightX, _r = self._maskData(self._spl, self._spd, testX)
-            lxh, lyh = self._nodes[0].nodePredict(leftX)
-            rxh, ryh = self._nodes[1].nodePredict(rightX)
-            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh))
-        else:
-            # is leaf node
-            xHat = testX
-            yHat = self._yhat * np.ones(len(testX))
-            return xHat, yHat
-
     def _regionFit(self, region_x, region_y, lossFn="squared"):
         """!
         @brief Evaulate region loss fuction:
             - squared errors
-            - L1 errors
         @return (loss, regionYhat)
         """
         yhat = np.mean(region_y)
         # residual sum squared error
         rsse = np.sum((region_y - yhat) ** 2)
-        # varience (RSSE / N)
-        # var = rsse / len(region_y)
         return rsse, yhat
 
     def _isGoodSplit(self):

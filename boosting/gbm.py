@@ -39,7 +39,7 @@ class GBRTmodel(object):
         # internal storage (write out to external file on request)
         self._trees = [None]
         self._treeWeights = [1.0]
-        self._F = np.array([])
+        self._F = None
 
         # training data
         self.x = np.array([[]])
@@ -109,6 +109,7 @@ class GBRTmodel(object):
         """
         xTest = kwargs.pop("xTest", None)
         yTest = kwargs.pop("yTest", None)
+        status = []
         if xTest is not None and yTest is not None:
             print("Iteration | Training Err | Testing Err  | Tree weight ")
             print("======================================================")
@@ -142,24 +143,34 @@ class GBRTmodel(object):
             self._treeWeights.append(self.learning_rate * gamma_)
             self._F = self._F + gamma_ * self.learning_rate * pre_pred_loss
             # Compute Test Err if test data avalilbe
+            trainErr = self.trainErr()
             if xTest is not None and yTest is not None:
                 tstErr = self.testErr(xTest, yTest)
-                print(" %4d     | %4e | %4e | %.3f" % (i, self.trainErr(),  tstErr, gamma_))
+                print(" %4d     | %4e | %4e | %.3f" % (i, trainErr,  tstErr, gamma_))
+                status.append([i, trainErr, tstErr, gamma_])
             else:
-                print(" %4d     | %4e | %.3f " % (i, self.trainErr(), gamma_))
+                print(" %4d     | %4e | %.3f " % (i, trainErr, gamma_))
+                status.append([i, trainErr, gamma_])
+        return np.array(status)
 
 
     def trainErr(self):
         """!
         @brief Training error.
         """
-        return self._L.var(self.y, self._F)
+        if self._F is not None:
+            return self._L.var(self.y, self._F)
+        else:
+            return None
 
     def testErr(self, xTest, yTest):
         """!
         @brief Testing error.
         """
-        return self._L.var(yTest, self.predict(xTest))
+        if self._F is not None:
+            return self._L.var(yTest, self.predict(xTest))
+        else:
+            return None
 
 
 class ConstModel(object):

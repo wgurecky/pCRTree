@@ -51,16 +51,27 @@ class TestGradBoosting(unittest.TestCase):
 
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
-        iters = 500
-        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.1, subsample=0.7)
-        gbt.train(self.xTrain, self.yTrain, maxIterations=iters, xTest=self.xTest, yTest=self.yTest)
+        iters = 800
+        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=1.0, subsample=1.0)
+        status = gbt.train(self.xTrain, self.yTrain, maxIterations=iters, xTest=self.xTest, yTest=self.yTest)
 
         # Eval 1d regression model
         xTest = np.linspace(0, 10, 400)
         yhat = gbt.predict(xTest)
 
-        # plot
-        plt.figure(1)
+        # plot training and testing errors
+        plt.figure(2)
+        plt.plot(status[:, 0][10:], status[:, 1][10:], label="Train Error")
+        plt.plot(status[:, 0][10:], status[:, 2][10:], label="Test Error")
+        plt.ylim(0, 2.)
+        plt.legend(loc=0)
+        plt.xlabel("Boosted Iteration")
+        plt.ylabel("MSE")
+        plt.savefig('1d_boosted_regression_err.png')
+        plt.close()
+
+        # plot result
+        plt.figure(2)
         plt.plot(self.xTrain, self.yTrain, marker='.', linestyle="None", label="Train Data")
         plt.plot(self.xTest, self.yTest, marker='.', linestyle="None", label="Test Data")
         plt.plot(xTest, yhat, label="Iter=" + str(iters))
@@ -87,7 +98,7 @@ class TestGradBoosting(unittest.TestCase):
         x2grid = np.linspace(xTest[:, 1].min(), xTest[:, 1].max(), 200)
         x1grid, x2grid = np.meshgrid(x1grid, x2grid)
         zgrid = griddata((xTest[:, 0], xTest[:, 1]), values=zHat, xi=(x1grid, x2grid), method='nearest')
-        plt.figure(2)
+        plt.figure(3)
         plt.pcolor(x1grid / (np.pi * 2), x2grid / (np.pi * 2), zgrid, cmap=cm.RdBu, vmin=abs(zgrid).min(), vmax=abs(zgrid).max())
         plt.colorbar()
         plt.savefig('2d_boosted_regression_ex.png')
