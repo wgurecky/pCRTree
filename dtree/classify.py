@@ -1,7 +1,7 @@
-#
-##
 #!/usr/bin/python3
 ##
+# \brief Implements classification trees for partitioning an
+# input space using a greedy, best-first fit.
 # For a classification tree, the prediced output (yhat) in a given region
 # is a class label (not a real number, as in a reg tree)
 ##
@@ -11,7 +11,7 @@ from dtree.node import BiNode
 
 class ClsTree(BiNode):
     """!
-    @brief Regression tree
+    @brief Classification tree
     """
     def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5):
         """!
@@ -27,6 +27,7 @@ class ClsTree(BiNode):
             print("ERROR: Recast response variables to type int before classification.")
             raise TypeError
         super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
+        self._nodeEr = self._regionFit(x, y)[0]
 
     def predict(self, testX):
         """!
@@ -73,14 +74,31 @@ class ClsTree(BiNode):
         of interest. In this case this is equal to the mode.
         @return (loss, regionYhat)
         """
+        Er = 0
         yhat = np.bincount(region_y).argmax()
-        f = np.sum( (yhat == region_y) ) / len(region_y)
-        if f == 0.5:
-            # uh oh
-            pass
-        # gini index
-        Er = f * (1. - f)
+        uq = np.unique(region_y)
+        for u in uq:
+            p = len(region_y[(region_y == u)]) / len(region_y)
+            Er += -p * np.log2(p)
         return Er, yhat
+
+    def evalSplits(self, split_crit="best"):
+        """!
+        @brief evaluate loss function in each split region
+        @return list [totError, valLeft, valRight, split_dimension, split_loc]
+        """
+        splitErrors = []
+        for split in self.iterSplitData():
+            eL, vL = self._regionFit(split[0][0], split[0][1])
+            eR, vR = self._regionFit(split[1][0], split[1][1])
+            p = len(split[0][0])  # number of points in left region
+            gain = self._nodeEr - p * eL - (1-p) * eR
+            eTot = eL + eR
+            splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
+        splitErrors = np.array(splitErrors)
+        bestSplitIdx = np.argmax(splitErrors[:, 5])
+        # select the best possible split
+        return splitErrors[bestSplitIdx]
 
     def _isGoodSplit(self):
         """!
@@ -120,8 +138,6 @@ class ClsTree(BiNode):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    import seaborn as sns
-    from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.datasets import make_gaussian_quantiles
     # run simple 2d classification tree example
@@ -137,7 +153,7 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # pCRTree implementation
-    bdt = ClsTree(X, y, maxDepth=5, minSplitPts=5)
+    bdt = ClsTree(X, y, maxDepth=3, minSplitPts=5)
     bdt.fitTree()
     # SKlearn implementation
     skt = DecisionTreeClassifier(max_depth=5)
@@ -156,8 +172,11 @@ if __name__ == "__main__":
     xx, yy = np.meshgrid(np.arange(x_min, x_max, plot_step),
                          np.arange(y_min, y_max, plot_step))
 
+    # compute predicted descision boundaries
     Z = bdt.predict(np.c_[xx.ravel(), yy.ravel()])
     # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
+
+    # Plot
     Z = Z.reshape(xx.shape)
     cs = plt.contourf(xx, yy, Z, cmap=plt.cm.Paired)
     plt.axis("tight")
@@ -167,7 +186,7 @@ if __name__ == "__main__":
         idx = np.where(y == i)
         plt.scatter(X[idx, 0], X[idx, 1],
                     c=c, cmap=plt.cm.Paired,
-                    label="Class %s" % n)
+                    label="Class %s" % n, s=5)
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.legend(loc='upper right')

@@ -96,9 +96,6 @@ class BiNode(object):
         """!
         @brief Determine all possible split locations in all dimensions
         """
-        #TODO: FIX: you dont know number of splits before hand
-        # number of splits can differ in each dimension
-        # testSplits = np.zeros((np.shape(self.x)[0] - 1, np.shape(self.x)[1]))
         testSplits = []
         for i, data in enumerate(self.x.T):
             suD = np.unique(np.sort(data))
@@ -114,7 +111,8 @@ class BiNode(object):
         testSplits = self.splitLocs()
         for d in range(np.shape(self.x)[1]):
             for spl in testSplits[d]:
-                leftExpl, leftData, rightExpl, rightData = self._maskData(spl, d, self.x, self.y)
+                leftExpl, leftData, rightExpl, rightData = \
+                    self._maskData(spl, d, self.x, self.y)
                 yield ([leftExpl, leftData], [rightExpl, rightData], d, spl)
 
     def _maskData(self, spl, d, x, y=None):
