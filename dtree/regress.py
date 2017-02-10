@@ -1,4 +1,8 @@
 #!/usr/bin/python3
+##
+# \brief Implements regression trees using greedy,
+# best first splits.
+##
 import numpy as np
 from dtree.node import BiNode
 
