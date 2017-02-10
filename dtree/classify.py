@@ -91,7 +91,7 @@ class ClsTree(BiNode):
         for split in self.iterSplitData():
             eL, vL = self._regionFit(split[0][0], split[0][1])
             eR, vR = self._regionFit(split[1][0], split[1][1])
-            p = len(split[0][0])  # number of points in left region
+            p = len(split[0][0]) / len(self.y)  # number of points in left region
             gain = self._nodeEr - p * eL - (1-p) * eR
             eTot = eL + eR
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # pCRTree implementation
-    bdt = ClsTree(X, y, maxDepth=3, minSplitPts=5)
+    bdt = ClsTree(X, y, maxDepth=5, minSplitPts=5)
     bdt.fitTree()
     # SKlearn implementation
     skt = DecisionTreeClassifier(max_depth=5)
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         idx = np.where(y == i)
         plt.scatter(X[idx, 0], X[idx, 1],
                     c=c, cmap=plt.cm.Paired,
-                    label="Class %s" % n, s=5)
+                    label="Class %s" % n, s=10)
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.legend(loc='upper right')
