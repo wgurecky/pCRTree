@@ -13,7 +13,7 @@ class ClsTree(BiNode):
     """!
     @brief Classification tree
     """
-    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5):
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5, weights=None):
         """!
         @param x nd_array of integers or floats. shape = (Npts, D)
         @param y 1d_array of integers. shape = (Npts,)
@@ -66,7 +66,7 @@ class ClsTree(BiNode):
             yHat = self._yhat * np.ones(len(testX))
             return xHat, yHat, testXIdx
 
-    def _regionFit(self, region_x, region_y, lossFn="squared"):
+    def _regionFit(self, region_x, region_y, weights=None):
         """!
         @brief Evaulate region loss fuction:
             - Gini impurity
@@ -153,10 +153,10 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # pCRTree implementation
-    bdt = ClsTree(X, y, maxDepth=5, minSplitPts=5)
+    bdt = ClsTree(X, y, maxDepth=10, minSplitPts=3)
     bdt.fitTree()
     # SKlearn implementation
-    skt = DecisionTreeClassifier(max_depth=5)
+    skt = DecisionTreeClassifier(max_depth=10)
     skt.fit(X, y)
 
     plot_colors = "br"
