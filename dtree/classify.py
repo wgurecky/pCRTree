@@ -27,7 +27,29 @@ class ClsTree(BiNode):
             print("ERROR: Recast response variables to type int before classification.")
             raise TypeError
         super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
-        self._nodeEr = self._regionFit(x, y)[0]
+        if weights is not None:
+            self.weights = np.ones(len(y))
+        else:
+            self.weights = np.ones(len(y))
+        self._nodeEr = self._regionFit(x, y, self._weights)[0]
+
+    @property
+    def weights(self):
+        """!
+        @brief Weights array accessor
+        """
+        return self._weights
+
+    @weights.setter
+    def weights(self, weights):
+        """!
+        @brief Set weights and ensure weights sum to 1
+        @param weights 1d_array of weights corrosponding to y
+        """
+        if len(weights) != len(self.y):
+            raise RuntimeError
+        self._weights = weights
+        self._weights /= np.sum(weights)
 
     def predict(self, testX):
         """!
@@ -56,7 +78,7 @@ class ClsTree(BiNode):
             indicies of original X vector and corrosponding resopnse Y
         """
         if self._nodes != (None, None):
-            leftX, lIdX, rightX, rIdX = self._maskData(self._spl, self._spd, testX, testXIdx)
+            leftX, lIdX, rightX, rIdX, _1, _2 = self._maskData(self._spl, self._spd, testX, testXIdx)
             lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
             rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
             return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
@@ -66,7 +88,7 @@ class ClsTree(BiNode):
             yHat = self._yhat * np.ones(len(testX))
             return xHat, yHat, testXIdx
 
-    def _regionFit(self, region_x, region_y, weights=None):
+    def _regionFit(self, region_x, region_y, region_weights):
         """!
         @brief Evaulate region loss fuction:
             - Gini impurity
@@ -78,7 +100,10 @@ class ClsTree(BiNode):
         yhat = np.bincount(region_y).argmax()
         uq = np.unique(region_y)
         for u in uq:
-            p = len(region_y[(region_y == u)]) / len(region_y)
+            wgts = region_weights[(region_y == u)]
+            p = np.sum(wgts) / len(region_y)
+            # old unweighted frac
+            # p = len(region_y[(region_y == u)]) / len(region_y)
             Er += -p * np.log2(p)
         return Er, yhat
 
@@ -89,8 +114,8 @@ class ClsTree(BiNode):
         """
         splitErrors = []
         for split in self.iterSplitData():
-            eL, vL = self._regionFit(split[0][0], split[0][1])
-            eR, vR = self._regionFit(split[1][0], split[1][1])
+            eL, vL = self._regionFit(split[0][0], split[0][1], split[0][2])
+            eR, vR = self._regionFit(split[1][0], split[1][1], split[1][2])
             p = len(split[0][0]) / len(self.y)  # number of points in left region
             gain = self._nodeEr - p * eL - (1-p) * eR
             eTot = eL + eR
@@ -99,6 +124,44 @@ class ClsTree(BiNode):
         bestSplitIdx = np.argmax(splitErrors[:, 5])
         # select the best possible split
         return splitErrors[bestSplitIdx]
+
+    def iterSplitData(self):
+        """!
+        @brief Generates split datasets
+        """
+        testSplits = self.splitLocs()
+        for d in range(np.shape(self.x)[1]):
+            for spl in testSplits[d]:
+                leftExpl, leftData, rightExpl, rightData, leftWeights, rightWeights = \
+                    self._maskData(spl, d, self.x, self.y, self._weights)
+                yield ([leftExpl, leftData, leftWeights], [rightExpl, rightData, rightWeights], d, spl)
+
+    def _maskData(self, spl, d, x, y=None, w=None):
+        """!
+        @brief Given split location and dimension along which to split,
+        partition the data into left and right datasets.
+        @param spl  Split location (int or float)
+        @param d    Split dimension (int)
+        @param x  Explanatory variables nd_array
+        @param y  Response vars 1d_array
+        """
+        leftMask = (x[:, int(d)] < spl)
+        rightMask = (x[:, int(d)] >= spl)
+        leftExpl = x[leftMask]
+        rightExpl = x[rightMask]
+        if y is not None:
+            leftData = y[leftMask]
+            rightData = y[rightMask]
+        else:
+            leftData = None
+            rightData = None
+        if w is not None:
+            leftWeights = w[leftMask]
+            rightWeights = w[rightMask]
+        else:
+            leftWeights = None
+            rightWeights = None
+        return leftExpl, leftData, rightExpl, rightData, leftWeights, rightWeights
 
     def _isGoodSplit(self):
         """!
@@ -122,15 +185,15 @@ class ClsTree(BiNode):
             lYhat = bs[1]
             rYhat = bs[2]
             d, spl = bs[3], bs[4]
-            splitData = self._maskData(spl, d, self.x, self.y)
+            splitData = self._maskData(spl, d, self.x, self.y, self._weights)
 
             # store split location and split dimension on current node
             self._spl = spl
             self._spd = d
 
             # create left and right child nodes
-            leftNode = ClsTree(splitData[0], splitData[1], lYhat, self.level + 1, self.maxDepth)
-            rightNode = ClsTree(splitData[2], splitData[3], rYhat, self.level + 1, self.maxDepth)
+            leftNode = ClsTree(splitData[0], splitData[1], lYhat, self.level + 1, self.maxDepth, weights=splitData[4])
+            rightNode = ClsTree(splitData[2], splitData[3], rYhat, self.level + 1, self.maxDepth, weights=splitData[5])
             self._nodes = (leftNode, rightNode)
             print("Split at: %f in dimension: %d, yhat_left: %d, yhat_right: %d, level: %d" % (spl, d, lYhat, rYhat, self.level))
             return 1
