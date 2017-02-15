@@ -6,6 +6,7 @@
 # is a class label (not a real number, as in a reg tree)
 ##
 import numpy as np
+import math
 from dtree.node import BiNode
 
 
@@ -26,7 +27,7 @@ class ClsTree(BiNode):
         if ('int' not in str(y.dtype)):
             print("ERROR: Recast response variables to type int before classification.")
             raise TypeError
-        super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
+        super(ClsTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
         if weights is not None:
             self.weights = np.ones(len(y))
         else:
@@ -96,7 +97,7 @@ class ClsTree(BiNode):
         of interest. In this case this is equal to the mode.
         @return (loss, regionYhat)
         """
-        Er = 0
+        Er = 0.
         yhat = np.bincount(region_y).argmax()
         uq = np.unique(region_y)
         for u in uq:
@@ -116,8 +117,8 @@ class ClsTree(BiNode):
         for split in self.iterSplitData():
             eL, vL = self._regionFit(split[0][0], split[0][1], split[0][2])
             eR, vR = self._regionFit(split[1][0], split[1][1], split[1][2])
-            p = len(split[0][0]) / len(self.y)  # number of points in left region
-            gain = self._nodeEr - p * eL - (1-p) * eR
+            p = len(split[0][0]) / len(self.y)  # frac of points in left region
+            gain = self._nodeEr - p * eL - (1 - p) * eR
             eTot = eL + eR
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
@@ -216,10 +217,10 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # pCRTree implementation
-    bdt = ClsTree(X, y, maxDepth=10, minSplitPts=3)
+    bdt = ClsTree(X, y, maxDepth=10, minSplitPts=5)
     bdt.fitTree()
     # SKlearn implementation
-    skt = DecisionTreeClassifier(max_depth=10)
+    skt = DecisionTreeClassifier(max_depth=5)
     skt.fit(X, y)
 
     plot_colors = "br"
