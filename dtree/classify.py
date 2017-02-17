@@ -92,8 +92,15 @@ class ClsTree(BiNode):
     def _regionFit(self, region_x, region_y, region_weights):
         """!
         @brief Evaulate region loss fuction:
-            - Gini impurity
-        optimal value is equal to the most likely value in the region
+        - region entropy:
+        \f[
+        E = \sum_k -p_k * log(p_k)
+        \f]
+        Where
+        \f$ p_k \f$ is the weighted fraction of items in region
+        corresponding to label \f$ k \f$.
+
+        The optimal prediction value is equal to the most likely value in the region
         of interest. In this case this is equal to the mode.
         @return (loss, regionYhat)
         """
