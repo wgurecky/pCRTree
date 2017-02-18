@@ -64,7 +64,7 @@ class GBCTmodel(object):
         # tree_weight * (weights * (T_i(x) == K))
         histCols = []
         lenX = testX.shape[0]
-        for k in range(self._K):
+        for k in np.sort(np.unique(self.y)):
             counts = np.zeros(lenX)
             for i, tree in enumerate(self._trees):
                 # where did this tree correcly predict?
@@ -127,13 +127,15 @@ class GBCTmodel(object):
         self.x = x
         self.y = y
         lenY = len(self.y)
-        y_weights = None
+        y_weights = np.ones(lenY) / lenY
         self._K = len(np.unique(self.y))
         for i in range(maxIterations):
+            # subsample training data
+            sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
             # Fit classification tree to training data with current weights
-            self._trees.append(ClsTree(self.x, self.y,
-                maxDepth=self.maxTreeDepth, weights=y_weights))
-            y_weights = self._trees[i].weights
+            self._trees.append(ClsTree(self.x[sub_idx], self.y[sub_idx],
+                maxDepth=self.maxTreeDepth, weights=y_weights[sub_idx]))
+            # y_weights = self._trees[i].weights
             print((max(y_weights), min(y_weights)))
             self._trees[i].fitTree()
             #
@@ -147,7 +149,7 @@ class GBCTmodel(object):
             # Ic == sparse matrix with 1's on diag where current tree model != training y_i
             #
             # Compute weighted error of current classification tree
-            err = np.sum(np.dot(y_weights, corrPredict)) / np.sum(y_weights)
+            err = np.sum(y_weights * Ic) / np.sum(y_weights)
             print("Tree Err: %f" % err)
             #
             # Compute current tree weight
@@ -156,7 +158,7 @@ class GBCTmodel(object):
             print("Tree Weight: %f" % self._treeWeights[i])
             #
             # Compute new data weights: up-weight were we were wrong
-            y_weights = y_weights * np.exp(self._treeWeights[i] * Ic)
+            y_weights *= np.exp(self._treeWeights[i] * Ic)
             y_weights /= np.sum(y_weights)
 
 
@@ -177,8 +179,8 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # boosted Classification tree implementation
-    bdt = GBCTmodel(maxTreeDepth=5, learning_rate=0.5)
-    bdt.train(X, y, maxIterations=15)
+    bdt = GBCTmodel(maxTreeDepth=3, learning_rate=0.5, subsample=0.7)
+    bdt.train(X, y, maxIterations=10)
     # SKlearn implementation
     skt = DecisionTreeClassifier(max_depth=5)
     skt.fit(X, y)

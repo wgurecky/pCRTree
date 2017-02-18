@@ -108,13 +108,12 @@ class ClsTree(BiNode):
         yhat = np.bincount(region_y).argmax()
         uq = np.unique(region_y)
         for u in uq:
-            wgts = region_weights[(region_y == u)]
-            p = np.sum(wgts) / len(region_y)
-            # p = np.sum(wgts)
-            # old unweighted frac
-            # p = len(region_y[(region_y == u)]) / len(region_y)
+            p = len(region_y[(region_y == u)]) / len(region_y)
             Er += -p * np.log2(p)
-        return Er, yhat
+        # where did we go wrong? Penalize errenous predictions by weights
+        wgts = region_weights[(region_y != yhat)]
+        wgt = np.sum(wgts) / len(region_y)
+        return Er * wgt, yhat
 
     def evalSplits(self, split_crit="best"):
         """!
