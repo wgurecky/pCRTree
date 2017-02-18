@@ -189,7 +189,7 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # boosted Classification tree implementation
-    bdt = GBCTmodel(maxTreeDepth=6, learning_rate=0.5, subsample=0.6)
+    bdt = GBCTmodel(maxTreeDepth=4, learning_rate=0.5, subsample=0.6)
     bdt.train(X, y, maxIterations=50)
     # SKlearn implementation
     skt = DecisionTreeClassifier(max_depth=5)
@@ -230,5 +230,5 @@ if __name__ == "__main__":
     plt.ylabel('y')
     plt.title('Decision Boundary')
 
-    plt.savefig("boosted_classify_ex.png")
+    plt.savefig("dblgauss_boosted_classify_ex.png")
     plt.close()

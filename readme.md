@@ -8,13 +8,15 @@ pCRTree is split into two subpackages:
 - dtree: Classification and regression trees.
 - boosting: Gradient boosting methods.
 
+
 Install
 ========
 
 Depends:
 
-- python3.2+
 - numpy
+- scikit-learn
+- matplotlib
 
 For developers:
 
@@ -23,9 +25,4 @@ For developers:
 Users:
 
     $python3 setup.py install --user
-
-Unit tests are executed by:
-
-    $cd /path/to/dtree
-    $python -m unittest discover
 
