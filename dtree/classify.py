@@ -29,7 +29,7 @@ class ClsTree(BiNode):
             raise TypeError
         super(ClsTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
         if weights is not None:
-            self.weights = np.ones(len(y))
+            self.weights = weights
         else:
             self.weights = np.ones(len(y))
         self._nodeEr = self._regionFit(x, y, self._weights)[0]
@@ -110,6 +110,7 @@ class ClsTree(BiNode):
         for u in uq:
             wgts = region_weights[(region_y == u)]
             p = np.sum(wgts) / len(region_y)
+            # p = np.sum(wgts)
             # old unweighted frac
             # p = len(region_y[(region_y == u)]) / len(region_y)
             Er += -p * np.log2(p)

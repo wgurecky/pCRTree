@@ -43,7 +43,7 @@ class GBCTmodel(object):
         self.y = np.array([])
 
         # number of class labels
-        self._K = len(np.unique(self.y))
+        self._K = None
 
     def predict(self, testX, **kwargs):
         """!
@@ -63,19 +63,20 @@ class GBCTmodel(object):
         """
         # tree_weight * (weights * (T_i(x) == K))
         histCols = []
-        for k in np.sort(np.unique(self.y)):
-            counts = np.zeros(len(self.y))
+        lenX = testX.shape[0]
+        for k in range(self._K):
+            counts = np.zeros(lenX)
             for i, tree in enumerate(self._trees):
                 # where did this tree correcly predict?
-                corrPredict = np.zeros((len(self.y), len(self.y)))
-                corrMask = (k == self.tree.predict(testX))
+                Ic = np.zeros(lenX)
+                corrMask = (k == tree.predict(testX))
                 # set diagonal to correctMask
-                Ic = np.diag(corrPredict)
                 Ic[corrMask] = 1
-                corrPredict[np.diag_indices_from(corrPredict)] = Ic
-                counts += np.dot(self._treeWeights[i], corrPredict)
+                # corrPredict[np.diag_indices_from(corrPredict)] = Ic
+                counts += self._treeWeights[i] * Ic
             histCols.append(counts)
-        return np.array(histCols).T
+        hist = np.array(histCols).T
+        return hist
 
     def predictClassProbs(self, testX, **kwargs):
         """!
@@ -125,45 +126,97 @@ class GBCTmodel(object):
         status = []
         self.x = x
         self.y = y
+        lenY = len(self.y)
         y_weights = None
+        self._K = len(np.unique(self.y))
         for i in range(maxIterations):
             # Fit classification tree to training data with current weights
-            self._trees.append(ClsTree(self.x, self.y, maxDepth=self.maxTreeDepth, weights=y_weights))
+            self._trees.append(ClsTree(self.x, self.y,
+                maxDepth=self.maxTreeDepth, weights=y_weights))
             y_weights = self._trees[i].weights
+            print((max(y_weights), min(y_weights)))
+            self._trees[i].fitTree()
             #
             # where did this tree incorrectly predict?
-            corrPredict = np.zeros((len(self.y), len(self.y)))
+            corrPredict = np.zeros((lenY, lenY))
             corrMask = (self.y != self._trees[i].predict(self.x))
             Ic = np.diag(corrPredict)
+            Ic.setflags(write=True)
             Ic[corrMask] = 1
             corrPredict[np.diag_indices_from(corrPredict)] = Ic
             # Ic == sparse matrix with 1's on diag where current tree model != training y_i
             #
             # Compute weighted error of current classification tree
             err = np.sum(np.dot(y_weights, corrPredict)) / np.sum(y_weights)
+            print("Tree Err: %f" % err)
             #
             # Compute current tree weight
-            self._treeWeights.append(np.log((1. - err) / err) + np.log(self._K - 1))
+            self._treeWeights.append(self.learning_rate *
+                (np.log((1. - err) / err) + np.log(self._K - 1)))
+            print("Tree Weight: %f" % self._treeWeights[i])
             #
-            # Compute new data weights
-            y_weights = y_weights * np.exp(np.diag(self._treeWeights[i] * corrPredict))
+            # Compute new data weights: up-weight were we were wrong
+            y_weights = y_weights * np.exp(self._treeWeights[i] * Ic)
             y_weights /= np.sum(y_weights)
 
 
-    def trainErr(self):
-        """!
-        @brief Training error.
-        """
-        if self._F is not None:
-            return self._L.var(self.y, self._F)
-        else:
-            return None
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.datasets import make_gaussian_quantiles
+    # run simple 2d classification tree example
 
-    def testErr(self, xTest, yTest):
-        """!
-        @brief Testing error.
-        """
-        if self._F is not None:
-            return self._L.var(yTest, self.predict(xTest))
-        else:
-            return None
+    # Construct dataset
+    X1, y1 = make_gaussian_quantiles(cov=2.,
+                                     n_samples=100, n_features=2,
+                                     n_classes=2, random_state=1)
+    X2, y2 = make_gaussian_quantiles(mean=(3, 3), cov=1.5,
+                                     n_samples=400, n_features=2,
+                                     n_classes=2, random_state=1)
+    X = np.concatenate((X1, X2))
+    y = np.concatenate((y1, - y2 + 1))
+
+    # boosted Classification tree implementation
+    bdt = GBCTmodel(maxTreeDepth=5, learning_rate=0.5)
+    bdt.train(X, y, maxIterations=15)
+    # SKlearn implementation
+    skt = DecisionTreeClassifier(max_depth=5)
+    skt.fit(X, y)
+
+    plot_colors = "br"
+    plot_step = 0.02
+    class_names = "AB"
+
+    plt.figure(figsize=(10, 5))
+
+    # Plot the decision boundaries
+    plt.subplot(111)
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, plot_step),
+                         np.arange(y_min, y_max, plot_step))
+
+    # compute predicted descision boundaries
+    Z = bdt.predict(np.c_[xx.ravel(), yy.ravel()])
+    # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
+
+    # Plot
+    Z = Z.reshape(xx.shape)
+    cs = plt.contourf(xx, yy, Z, cmap=plt.cm.Paired)
+    plt.axis("tight")
+
+    # Plot the training points
+    for i, n, c in zip(range(2), class_names, plot_colors):
+        idx = np.where(y == i)
+        plt.scatter(X[idx, 0], X[idx, 1],
+                    c=c, cmap=plt.cm.Paired,
+                    label="Class %s" % n, s=10)
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
+    plt.legend(loc='upper right')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Decision Boundary')
+
+    plt.savefig("boosted_classify_ex.png")
+    plt.close()
