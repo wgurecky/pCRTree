@@ -5,6 +5,7 @@
 # For a classification tree, the prediced output (yhat) in a given region
 # is a class label (not a real number, as in a reg tree)
 ##
+from __future__ import division
 import numpy as np
 import math
 from dtree.node import BiNode

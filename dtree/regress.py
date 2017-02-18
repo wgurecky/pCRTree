@@ -3,6 +3,7 @@
 # \brief Implements regression trees using greedy,
 # best first splits.
 ##
+from __future__ import division
 import numpy as np
 from dtree.node import BiNode
 

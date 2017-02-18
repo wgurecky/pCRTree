@@ -4,6 +4,7 @@
 # \date Feb 10 2017
 # \author William Gurecky
 ##
+from __future__ import division
 import numpy as np
 from dtree.classify import ClsTree
 
