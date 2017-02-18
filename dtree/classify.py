@@ -6,6 +6,7 @@
 # is a class label (not a real number, as in a reg tree)
 ##
 import numpy as np
+import math
 from dtree.node import BiNode
 
 
@@ -26,9 +27,9 @@ class ClsTree(BiNode):
         if ('int' not in str(y.dtype)):
             print("ERROR: Recast response variables to type int before classification.")
             raise TypeError
-        super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
+        super(ClsTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
         if weights is not None:
-            self.weights = np.ones(len(y))
+            self.weights = weights
         else:
             self.weights = np.ones(len(y))
         self._nodeEr = self._regionFit(x, y, self._weights)[0]
@@ -91,17 +92,25 @@ class ClsTree(BiNode):
     def _regionFit(self, region_x, region_y, region_weights):
         """!
         @brief Evaulate region loss fuction:
-            - Gini impurity
-        optimal value is equal to the most likely value in the region
+        - region entropy:
+        \f[
+        E = \sum_k -p_k * log(p_k)
+        \f]
+        Where
+        \f$ p_k \f$ is the weighted fraction of items in region
+        corresponding to label \f$ k \f$.
+
+        The optimal prediction value is equal to the most likely value in the region
         of interest. In this case this is equal to the mode.
         @return (loss, regionYhat)
         """
-        Er = 0
+        Er = 0.
         yhat = np.bincount(region_y).argmax()
         uq = np.unique(region_y)
         for u in uq:
             wgts = region_weights[(region_y == u)]
             p = np.sum(wgts) / len(region_y)
+            # p = np.sum(wgts)
             # old unweighted frac
             # p = len(region_y[(region_y == u)]) / len(region_y)
             Er += -p * np.log2(p)
@@ -116,8 +125,8 @@ class ClsTree(BiNode):
         for split in self.iterSplitData():
             eL, vL = self._regionFit(split[0][0], split[0][1], split[0][2])
             eR, vR = self._regionFit(split[1][0], split[1][1], split[1][2])
-            p = len(split[0][0]) / len(self.y)  # number of points in left region
-            gain = self._nodeEr - p * eL - (1-p) * eR
+            p = len(split[0][0]) / len(self.y)  # frac of points in left region
+            gain = self._nodeEr - p * eL - (1 - p) * eR
             eTot = eL + eR
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
@@ -216,10 +225,10 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # pCRTree implementation
-    bdt = ClsTree(X, y, maxDepth=10, minSplitPts=3)
+    bdt = ClsTree(X, y, maxDepth=10, minSplitPts=5)
     bdt.fitTree()
     # SKlearn implementation
-    skt = DecisionTreeClassifier(max_depth=10)
+    skt = DecisionTreeClassifier(max_depth=5)
     skt.fit(X, y)
 
     plot_colors = "br"

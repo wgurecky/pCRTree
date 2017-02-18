@@ -21,7 +21,7 @@ class RegTree(BiNode):
         @param minSplitPts minimum number of points in node to be considered
             for further splitting.
         """
-        super().__init__(x, y, yhat, level, maxDepth, minSplitPts)
+        super(RegTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
 
     def predict(self, testX):
         """!

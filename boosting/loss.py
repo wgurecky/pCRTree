@@ -9,10 +9,12 @@ import re
 import numpy as np
 
 
-class AbastractLoss(metaclass=abc.ABCMeta):
+class AbastractLoss:
     """!
     @brief Loss function base class
     """
+    __metaclass__ = abc.ABCMeta
+
     def __int__(self, *args, **kwargs):
         pass
 
@@ -91,7 +93,7 @@ class HuberLoss(AbastractLoss):
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "abs")
-        super(AbastractLoss, self).__init__(*args, *kwargs)
+        super(AbastractLoss, self).__init__(*args, **kwargs)
 
     def loss(self, y, yhat):
         delta = 1.0

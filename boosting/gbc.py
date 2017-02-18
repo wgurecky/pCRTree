@@ -1,13 +1,11 @@
 #!/usr/bin/python3
 ##!
-# \brief Gradient boosted classification trees
+# \brief Boosted classification trees using the SAMME method
 # \date Feb 10 2017
 # \author William Gurecky
 ##
 import numpy as np
-from scipy.optimize import minimize
-from dtree.regress import RegTree
-from boosting.loss import FLoss
+from dtree.classify import ClsTree
 
 
 class GBCTmodel(object):
@@ -19,10 +17,9 @@ class GBCTmodel(object):
     - stochastic gradient boosting
 
     Implemented loss functions:
-    - huber
-    - squared-error
+    - exp (multi-class exp loss used in SAMME method)
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='se'):
+    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='exp'):
         """!
         @param maxTreeDepth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
@@ -37,28 +34,63 @@ class GBCTmodel(object):
         self.subsample = subsample
 
         # internal storage (write out to external file on request)
-        self._trees = [None]
-        self._treeWeights = [1.0]
+        self._trees = []
+        self._treeWeights = []
         self._F = None
 
         # training data
         self.x = np.array([[]])
         self.y = np.array([])
 
-        # Loss class instance
-        self._L = FLoss(lossFn)
+        # number of class labels
+        self._K = None
 
-    def predict(self, testX):
+    def predict(self, testX, **kwargs):
         """!
-        @brief Evaluate gradient boosted classification tree model.
+        @brief Evaluate boosted classification tree model.
         @param testX (nd_array) evaluate model at these points
+        @return fHat (1d_array) predicted class labels at testX inputs
         """
-        if len(np.shape(testX)) == 1:
-            testX = np.array([testX]).T
-        fHat = np.zeros(testX.shape[0])
-        for weight, tree in zip(self._treeWeights, self._trees):
-            fHat += weight * tree.predict(testX)
+        # Build histogram
+        hist = self._buildHist(testX)
+        # find max likelihood class labels from histogram(s)
+        fHat = np.argmax(hist, axis=1)
         return fHat
+
+    def _buildHist(self, testX):
+        """!
+        @brief Computes the class histogram at input testX locs
+        """
+        # tree_weight * (weights * (T_i(x) == K))
+        histCols = []
+        lenX = testX.shape[0]
+        for k in range(self._K):
+            counts = np.zeros(lenX)
+            for i, tree in enumerate(self._trees):
+                # where did this tree correcly predict?
+                Ic = np.zeros(lenX)
+                corrMask = (k == tree.predict(testX))
+                # set diagonal to correctMask
+                Ic[corrMask] = 1
+                # corrPredict[np.diag_indices_from(corrPredict)] = Ic
+                counts += self._treeWeights[i] * Ic
+            histCols.append(counts)
+        hist = np.array(histCols).T
+        return hist
+
+    def predictClassProbs(self, testX, **kwargs):
+        """!
+        @brief Compute class probability distribution at testX
+        @return classProbs shape=(Nclasses, len(testX)
+        """
+        hist = self._buildHist(testX)
+        # for col in hist
+        sumC_K = np.sum( np.exp((1 / (self._K - 1.)) * hist.T), axis=0)
+        classProbs = []
+        for col in hist.T:
+            probC_K = np.exp((1 / (self._K - 1.)) * col)
+            classProbs.append(probC_K / sumC_K)
+        return np.array(classProbs)
 
     @property
     def F(self):
@@ -67,8 +99,12 @@ class GBCTmodel(object):
         """
         return self._F
 
-    def getTrainingSurface(self):
-        return self.x, self._F
+    @property
+    def K(self):
+        """!
+        @brief Integer number of class labels
+        """
+        return self._K
 
     @property
     def treeWeights(self):
@@ -80,102 +116,107 @@ class GBCTmodel(object):
 
     def train(self, x, y, maxIterations=5, warmStart=0, **kwargs):
         """!
-        @brief Train the classification tree model by the gradient boosting
-        method.
-        Initilize model with constant value:
-        \f[
-        F_{m=0} = mean(y)
-        \f]
-        Where y is the input traing data response vector.
-
-        At each iteration fit weak learner (\f$ h_m \f$) to pseudo-residuals
-        (Squared error loss function shown for example).
-        \f[
-        r(x)_m = -\nabla L(y, \hat y) = \frac{\partial \sum_i{(y_i - f(x_i)})^2}{\partial f(x_i)}
-        \f]
-
-        Next, seek to minimize w.r.t. \f$\gamma_m\f$:
-        \f[
-        \frac{\partial \sum_i( L(y_i, F_m + \gamma_m h(x_i)_m)) }{\partial \gamma_m} = 0
-        \f]
-
-        Update the model:
-        \f[
-        F_{m} = F_{m-1} + \gamma_m h_m
-        \f]
+        @brief Train the classification tree model by the SAMME method.
         @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
-        @param y (1d_array) Response variable vector. Shape = (N_support_pts,)
+        @param y (1d_array) Response class vector. Shape = (N_support_pts,)
         @param maxIterations  Max number of boosted iterations.
         """
         xTest = kwargs.pop("xTest", None)
         yTest = kwargs.pop("yTest", None)
         status = []
-        if xTest is not None and yTest is not None:
-            print("Iteration | Training Err | Testing Err  | Tree weight ")
-            print("======================================================")
-        else:
-            print("Iteration | Training Err | Tree weight ")
-            print("========================================")
-        # Reset model
         self.x = x
         self.y = y
-        self._trees = [ConstModel(x, y)]
-        self._treeWeights = [1.0]
-        self._F = self._trees[0].predict(self.x)
+        lenY = len(self.y)
+        y_weights = None
+        self._K = len(np.unique(self.y))
         for i in range(maxIterations):
-            # def sub sample training set
-            sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
-            # fit learner to pseudo-residuals
-            self._trees.append(RegTree(self.x[sub_idx],
-                                       self._L.gradLoss(self.y[sub_idx], self._F[sub_idx]),
-                                       maxDepth=self.maxTreeDepth,
-                                       )
-                              )
-            self._trees[-1].fitTree()
-            # define minimization problem
-            pre_pred_loss = self.trees[-1].predict(self.x)
-            lossSum = lambda gamma: np.sum(self._L.loss(self.y, self._F + gamma * pre_pred_loss))
-            # find optimal step size in direction of steepest descent
-            res = minimize(lossSum, 0.8, method='SLSQP')
-            if "successfully." not in res.message:
-                print(res.message)
-            gamma_ = res.x[0]
-            self._treeWeights.append(self.learning_rate * gamma_)
-            self._F = self._F + gamma_ * self.learning_rate * pre_pred_loss
-            # Compute Test Err if test data avalilbe
-            trainErr = self.trainErr()
-            if xTest is not None and yTest is not None:
-                tstErr = self.testErr(xTest, yTest)
-                print(" %4d     | %4e | %4e | %.3f" % (i, trainErr,  tstErr, gamma_))
-                status.append([i, trainErr, tstErr, gamma_])
-            else:
-                print(" %4d     | %4e | %.3f " % (i, trainErr, gamma_))
-                status.append([i, trainErr, gamma_])
-        return np.array(status)
+            # Fit classification tree to training data with current weights
+            self._trees.append(ClsTree(self.x, self.y,
+                maxDepth=self.maxTreeDepth, weights=y_weights))
+            y_weights = self._trees[i].weights
+            print((max(y_weights), min(y_weights)))
+            self._trees[i].fitTree()
+            #
+            # where did this tree incorrectly predict?
+            corrPredict = np.zeros((lenY, lenY))
+            corrMask = (self.y != self._trees[i].predict(self.x))
+            Ic = np.diag(corrPredict)
+            Ic.setflags(write=True)
+            Ic[corrMask] = 1
+            corrPredict[np.diag_indices_from(corrPredict)] = Ic
+            # Ic == sparse matrix with 1's on diag where current tree model != training y_i
+            #
+            # Compute weighted error of current classification tree
+            err = np.sum(np.dot(y_weights, corrPredict)) / np.sum(y_weights)
+            print("Tree Err: %f" % err)
+            #
+            # Compute current tree weight
+            self._treeWeights.append(self.learning_rate *
+                (np.log((1. - err) / err) + np.log(self._K - 1)))
+            print("Tree Weight: %f" % self._treeWeights[i])
+            #
+            # Compute new data weights: up-weight were we were wrong
+            y_weights = y_weights * np.exp(self._treeWeights[i] * Ic)
+            y_weights /= np.sum(y_weights)
 
 
-    def trainErr(self):
-        """!
-        @brief Training error.
-        """
-        if self._F is not None:
-            return self._L.var(self.y, self._F)
-        else:
-            return None
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.datasets import make_gaussian_quantiles
+    # run simple 2d classification tree example
 
-    def testErr(self, xTest, yTest):
-        """!
-        @brief Testing error.
-        """
-        if self._F is not None:
-            return self._L.var(yTest, self.predict(xTest))
-        else:
-            return None
+    # Construct dataset
+    X1, y1 = make_gaussian_quantiles(cov=2.,
+                                     n_samples=100, n_features=2,
+                                     n_classes=2, random_state=1)
+    X2, y2 = make_gaussian_quantiles(mean=(3, 3), cov=1.5,
+                                     n_samples=400, n_features=2,
+                                     n_classes=2, random_state=1)
+    X = np.concatenate((X1, X2))
+    y = np.concatenate((y1, - y2 + 1))
 
+    # boosted Classification tree implementation
+    bdt = GBCTmodel(maxTreeDepth=5, learning_rate=0.5)
+    bdt.train(X, y, maxIterations=15)
+    # SKlearn implementation
+    skt = DecisionTreeClassifier(max_depth=5)
+    skt.fit(X, y)
 
-class ConstModel(object):
-    def __init__(self, x, y, *args, **kwargs):
-        self._yhat = np.mean(y)
+    plot_colors = "br"
+    plot_step = 0.02
+    class_names = "AB"
 
-    def predict(self, x, *args, **kwrags):
-        return self._yhat * np.ones(len(x))
+    plt.figure(figsize=(10, 5))
+
+    # Plot the decision boundaries
+    plt.subplot(111)
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, plot_step),
+                         np.arange(y_min, y_max, plot_step))
+
+    # compute predicted descision boundaries
+    Z = bdt.predict(np.c_[xx.ravel(), yy.ravel()])
+    # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
+
+    # Plot
+    Z = Z.reshape(xx.shape)
+    cs = plt.contourf(xx, yy, Z, cmap=plt.cm.Paired)
+    plt.axis("tight")
+
+    # Plot the training points
+    for i, n, c in zip(range(2), class_names, plot_colors):
+        idx = np.where(y == i)
+        plt.scatter(X[idx, 0], X[idx, 1],
+                    c=c, cmap=plt.cm.Paired,
+                    label="Class %s" % n, s=10)
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
+    plt.legend(loc='upper right')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Decision Boundary')
+
+    plt.savefig("boosted_classify_ex.png")
+    plt.close()
