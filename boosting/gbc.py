@@ -121,6 +121,8 @@ class GBCTmodel(object):
         @param y (1d_array) Response class vector. Shape = (N_support_pts,)
         @param maxIterations  Max number of boosted iterations.
         """
+        print("Iteration | Training Err | Tree weight ")
+        print("========================================")
         xTest = kwargs.pop("xTest", None)
         yTest = kwargs.pop("yTest", None)
         status = []
@@ -136,30 +138,37 @@ class GBCTmodel(object):
             self._trees.append(ClsTree(self.x[sub_idx], self.y[sub_idx],
                 maxDepth=self.maxTreeDepth, weights=y_weights[sub_idx]))
             # y_weights = self._trees[i].weights
-            print((max(y_weights), min(y_weights)))
             self._trees[i].fitTree()
             #
             # where did this tree incorrectly predict?
-            corrPredict = np.zeros((lenY, lenY))
+            Ic = np.zeros(lenY)
             corrMask = (self.y != self._trees[i].predict(self.x))
-            Ic = np.diag(corrPredict)
-            Ic.setflags(write=True)
             Ic[corrMask] = 1
-            corrPredict[np.diag_indices_from(corrPredict)] = Ic
-            # Ic == sparse matrix with 1's on diag where current tree model != training y_i
             #
             # Compute weighted error of current classification tree
             err = np.sum(y_weights * Ic) / np.sum(y_weights)
-            print("Tree Err: %f" % err)
             #
             # Compute current tree weight
             self._treeWeights.append(self.learning_rate *
                 (np.log((1. - err) / err) + np.log(self._K - 1)))
-            print("Tree Weight: %f" % self._treeWeights[i])
             #
             # Compute new data weights: up-weight were we were wrong
             y_weights *= np.exp(self._treeWeights[i] * Ic)
             y_weights /= np.sum(y_weights)
+            #
+            # Store status
+            status.append([i, self.fracError(x, y), err])
+            print(" %4d     | %4e | %.3f " % (status[i][0], status[i][1], status[i][2]))
+        return np.array(status)
+
+    def fracError(self, x, y):
+        """!
+        @brief Compute fraction of misclassified data points
+        @return fraction of misclassified points
+        """
+        yhat = self.predict(x)
+        corrMask = (yhat != y)
+        return np.sum(corrMask) / len(y)
 
 
 if __name__ == "__main__":
@@ -179,8 +188,8 @@ if __name__ == "__main__":
     y = np.concatenate((y1, - y2 + 1))
 
     # boosted Classification tree implementation
-    bdt = GBCTmodel(maxTreeDepth=3, learning_rate=0.5, subsample=0.7)
-    bdt.train(X, y, maxIterations=10)
+    bdt = GBCTmodel(maxTreeDepth=6, learning_rate=0.5, subsample=0.6)
+    bdt.train(X, y, maxIterations=50)
     # SKlearn implementation
     skt = DecisionTreeClassifier(max_depth=5)
     skt.fit(X, y)

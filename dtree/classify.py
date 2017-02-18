@@ -14,7 +14,7 @@ class ClsTree(BiNode):
     """!
     @brief Classification tree
     """
-    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5, weights=None):
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5, weights=None, **kwargs):
         """!
         @param x nd_array of integers or floats. shape = (Npts, D)
         @param y 1d_array of integers. shape = (Npts,)
@@ -33,6 +33,7 @@ class ClsTree(BiNode):
         else:
             self.weights = np.ones(len(y))
         self._nodeEr = self._regionFit(x, y, self._weights)[0]
+        self.verbose = kwargs.pop("verbose", 0)
 
     @property
     def weights(self):
@@ -203,7 +204,8 @@ class ClsTree(BiNode):
             leftNode = ClsTree(splitData[0], splitData[1], lYhat, self.level + 1, self.maxDepth, weights=splitData[4])
             rightNode = ClsTree(splitData[2], splitData[3], rYhat, self.level + 1, self.maxDepth, weights=splitData[5])
             self._nodes = (leftNode, rightNode)
-            print("Split at: %f in dimension: %d, yhat_left: %d, yhat_right: %d, level: %d" % (spl, d, lYhat, rYhat, self.level))
+            if self.verbose:
+                print("Split at: %f in dimension: %d, yhat_left: %d, yhat_right: %d, level: %d" % (spl, d, lYhat, rYhat, self.level))
             return 1
 
 
