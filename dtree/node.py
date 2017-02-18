@@ -142,13 +142,23 @@ class BiNode(object):
         @return list [totError, valLeft, valRight, split_dimension, split_loc]
         """
         splitErrors = []
+        nodeErr = self._regionFit(self.x, self.y)[0]
         for split in self.iterSplitData():
             eL, vL = self._regionFit(split[0][0], split[0][1])
             eR, vR = self._regionFit(split[1][0], split[1][1])
             eTot = eL + eR
-            splitErrors.append([eTot, vL, vR, split[2], split[3]])
+            # compute varience reduction of split
+            gain = (1. / (len(self.y))) * nodeErr - \
+                    ((1. / (len(split[0][1]))) * eL +
+                    ((1. / (len(split[1][1]))) * eR))
+            splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
-        bestSplitIdx = np.argmin(splitErrors[:, 0])
+        if split_crit is "best":
+            # split on sum squared err
+            bestSplitIdx = np.argmin(splitErrors[:, 0])
+        else:
+            # split on gain
+            bestSplitIdx = np.argmax(splitErrors[:, -1])
         # select the best possible split
         return splitErrors[bestSplitIdx]
 
