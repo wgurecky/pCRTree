@@ -23,12 +23,12 @@ class GBCTmodel(object):
     def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='exp'):
         """!
         @param maxTreeDepth  Maximum depth of each weak learner in the model.
-            Equal to number of possible interactions captured by each tree in the GBRT.
+            Equal to number of possible interactions captured by each tree in the GBCT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
             boosted iteration.
         @param lossFn  (str) Target function to minimize at each iteration of boosting
-            string in ("se", "huber")
+            string in ("exp")
         """
         self.maxTreeDepth = maxTreeDepth
         self.learning_rate = learning_rate
@@ -82,7 +82,8 @@ class GBCTmodel(object):
     def predictClassProbs(self, testX, **kwargs):
         """!
         @brief Compute class probability distribution at testX
-        @return classProbs shape=(Nclasses, len(testX)
+        @param testX (nd_array) evaluate model at these points
+        @return classProbs shape=(Nclasses, len(testX))
         """
         hist = self._buildHist(testX)
         # for col in hist
@@ -91,7 +92,7 @@ class GBCTmodel(object):
         for col in hist.T:
             probC_K = np.exp((1 / (self._K - 1.)) * col)
             classProbs.append(probC_K / sumC_K)
-        return np.array(classProbs)
+        return np.array(classProbs).T
 
     @property
     def F(self):
@@ -165,6 +166,8 @@ class GBCTmodel(object):
     def fracError(self, x, y):
         """!
         @brief Compute fraction of misclassified data points
+        @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
+        @param y (1d_array) Response class vector. Shape = (N_support_pts,)
         @return fraction of misclassified points
         """
         yhat = self.predict(x)

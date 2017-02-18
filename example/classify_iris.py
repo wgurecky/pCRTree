@@ -40,6 +40,10 @@ def main():
     explan = np.c_[xx.ravel(), yy.ravel()]
     Z = iris_gbt.predict(explan)
 
+    # class probabilities
+    # Zpb = iris_gbt.predictClassProbs(explan)
+    # Z = Zpb[:,0]
+
     # plot predictions
     Z = Z.reshape(xx.shape)
     cs = plt.contourf(xx, yy, Z, cmap=sns.diverging_palette(220, 20, sep=20, as_cmap=True))
