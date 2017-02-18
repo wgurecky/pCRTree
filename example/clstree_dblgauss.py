@@ -1,19 +1,13 @@
-
 #!/usr/bin/python3
 ##!
 # \brief Performs two-class classification on a double gaussian
-# distribution using boosted classification trees.
+# distribution using a single classification tree.
 ##
-from boosting.gbc import GBCTmodel
-import seaborn as sns
+from dtree.classify import ClsTree
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.datasets import make_gaussian_quantiles
-pwd_ = os.path.dirname(os.path.abspath(__file__))
-dataDir = pwd_ + "/data/"
-np.random.seed(123)
 
 
 def main():
@@ -27,14 +21,14 @@ def main():
     X = np.concatenate((X1, X2))
     y = np.concatenate((y1, - y2 + 1))
 
-    # boosted Classification tree implementation
-    bdt = GBCTmodel(maxTreeDepth=4, learning_rate=0.5, subsample=0.6)
-    bdt.train(X, y, maxIterations=50)
+    # pCRTree implementation
+    bdt = ClsTree(X, y, maxDepth=10, minSplitPts=5)
+    bdt.fitTree()
     # SKlearn implementation
     skt = DecisionTreeClassifier(max_depth=5)
     skt.fit(X, y)
 
-    plot_colors = ("b", "firebrick")
+    plot_colors = "br"
     plot_step = 0.02
     class_names = "AB"
 
@@ -49,14 +43,11 @@ def main():
 
     # compute predicted descision boundaries
     Z = bdt.predict(np.c_[xx.ravel(), yy.ravel()])
-
-    # compare against sklearn
     # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
 
     # Plot
     Z = Z.reshape(xx.shape)
-    cs = plt.contourf(xx, yy, Z,
-            cmap=sns.diverging_palette(220, 20, sep=20, as_cmap=True))
+    cs = plt.contourf(xx, yy, Z, cmap=plt.cm.Paired)
     plt.axis("tight")
 
     # Plot the training points
@@ -72,7 +63,7 @@ def main():
     plt.ylabel('y')
     plt.title('Decision Boundary')
 
-    plt.savefig("dblgauss_boosted_classify_ex.png")
+    plt.savefig("2d_classify_ex.png")
     plt.close()
 
 
