@@ -81,7 +81,7 @@ class SquaredLoss(AbastractLoss):
         super(AbastractLoss, self).__init__(*args, **kwargs)
 
     def loss(self, y, yhat):
-        return (y - yhat) ** 2.
+        return 0.5 * (y - yhat) ** 2.
 
     def gradLoss(self, y, yhat):
         return (y - yhat)
@@ -104,6 +104,29 @@ class HuberLoss(AbastractLoss):
         return (y - yhat) / np.sqrt(((y - yhat) ** 2 / delta ** 2) + 1)
 
 
+class QuantileLoss(AbastractLoss):
+    """!
+    @brief Smooth Huber quantile function.
+    see: arxiv.org/pdf/1402.4624.pdf
+    """
+    def __init__(self, *args, **kwargs):
+        self.name = kwargs.pop("name", "abs")
+        self.tau = 0.5  # in [0, 1]
+        super(AbastractLoss, self).__init__(*args, **kwargs)
+
+    def loss(self, y, yhat):
+        x = (y - yhat)
+        l = np.zeros(np.shape(x))
+        l[x < 0] = 1.
+        return x * (self.tau - l)
+
+    def gradLoss(self, y, yhat):
+        x = (y - yhat)
+        l = np.zeros(np.shape(x))
+        l[x < 0] = 1.
+        return self.tau - l
+
+
 # =========================================================================== #
 # Factory
 # =========================================================================== #
@@ -120,6 +143,8 @@ class FLoss(object):
             return SquaredLoss(name=name)
         if re.match("huber", name):
             return HuberLoss(name=name)
+        if re.match("quantile", name):
+            return QuantileLoss(name=name)
         else:
             print("WARNING: Requested loss unavalible. \
                    Falling back to squared error loss.")

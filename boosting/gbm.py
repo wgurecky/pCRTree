@@ -8,6 +8,7 @@ import numpy as np
 from scipy.optimize import minimize
 from dtree.regress import RegTree
 from boosting.loss import FLoss
+from sklearn.preprocessing import StandardScaler
 
 
 class GBRTmodel(object):
@@ -35,6 +36,7 @@ class GBRTmodel(object):
         self.maxTreeDepth = maxTreeDepth
         self.learning_rate = learning_rate
         self.subsample = subsample
+        self.scale = StandardScaler()
 
         # internal storage (write out to external file on request)
         self._trees = [None]
@@ -58,7 +60,7 @@ class GBRTmodel(object):
         fHat = np.zeros(testX.shape[0])
         for weight, tree in zip(self._treeWeights, self._trees):
             fHat += weight * tree.predict(testX)
-        return fHat
+        return self.scale.inverse_transform(fHat)
 
     @property
     def F(self):
@@ -118,7 +120,7 @@ class GBRTmodel(object):
             print("========================================")
         # Reset model
         self.x = x
-        self.y = y
+        self.y = self.scale.fit_transform(y)
         self._trees = [ConstModel(x, y)]
         self._treeWeights = [1.0]
         self._F = self._trees[0].predict(self.x)
