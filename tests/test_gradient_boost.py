@@ -51,8 +51,8 @@ class TestGradBoosting(unittest.TestCase):
 
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
-        iters = 800
-        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.7, subsample=0.7, lossFn="quantile")
+        iters = 500
+        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.3, subsample=0.6, lossFn="se")
         status = gbt.train(self.xTrain, self.yTrain, maxIterations=iters, xTest=self.xTest, yTest=self.yTest)
 
         # Eval 1d regression model
@@ -78,6 +78,60 @@ class TestGradBoosting(unittest.TestCase):
         plt.legend(loc=0)
         plt.savefig('1d_boosted_regression_ex.png')
         plt.close()
+
+    def testQuantileReg(self):
+        # test abilit to estimate conf intervals by the quantile loss function
+        np.random.seed(1)
+        def f(x):
+            return x * np.sin(x)
+
+        X = np.atleast_2d(np.random.uniform(0, 10.0, size=100)).T
+        X = X.astype(np.float32)
+        y = f(X).ravel()
+
+        dy = 1.5 + 1.0 * np.random.random(y.shape)
+        noise = np.random.normal(0, dy)
+        y += noise
+        y = y.astype(np.float32)
+
+        # Mesh the input space for evaluations of the real function, the prediction and
+        # its MSE
+        xx = np.atleast_2d(np.linspace(0, 10, 1000)).T
+        xx = xx.astype(np.float32)
+
+        # fit to median
+        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.2, subsample=0.9, lossFn="quantile", tau=0.5)
+        gbt.train(X, y, maxIterations=350)
+        y_median = gbt.predict(xx)
+
+        # lower
+        gbt.tau = 0.1
+        gbt.train(X, y, maxIterations=350)
+        y_lower = gbt.predict(xx)
+
+        # upper
+        gbt.tau = 0.9
+        gbt.train(X, y, maxIterations=350)
+        y_upper = gbt.predict(xx)
+
+        # Plot the function, the prediction and the 90% confidence interval based on
+        # the MSE
+        fig = plt.figure()
+        plt.plot(xx, f(xx), 'g:', label=u'$f(x) = x\,\sin(x)$')
+        plt.plot(X, y, 'b.', markersize=10, label=u'Observations')
+        plt.plot(xx, y_median, 'r-', label=u'Prediction')
+        plt.plot(xx, y_upper, 'k-')
+        plt.plot(xx, y_lower, 'k-')
+        plt.fill(np.concatenate([xx, xx[::-1]]),
+                 np.concatenate([y_upper, y_lower[::-1]]),
+                 alpha=.5, fc='b', ec='None', label='90% prediction interval')
+        plt.xlabel('$x$')
+        plt.ylabel('$f(x)$')
+        plt.ylim(-10, 20)
+        plt.legend(loc='upper left')
+        plt.savefig('1d_boosted_regression_quantile_ex.png')
+        plt.close()
+
 
     def test2dBoostedReg(self):
         iters = 40

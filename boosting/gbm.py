@@ -23,7 +23,7 @@ class GBRTmodel(object):
     - huber
     - squared-error
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='se'):
+    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='se', tau=0.5, **kwargs):
         """!
         @param maxTreeDepth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
@@ -36,7 +36,7 @@ class GBRTmodel(object):
         self.maxTreeDepth = maxTreeDepth
         self.learning_rate = learning_rate
         self.subsample = subsample
-        self.scale = StandardScaler()
+        self.trans = StandardScaler()
 
         # internal storage (write out to external file on request)
         self._trees = [None]
@@ -47,8 +47,14 @@ class GBRTmodel(object):
         self.x = np.array([[]])
         self.y = np.array([])
 
+        # normalization
+        self._scale = False
+        if kwargs.get("scale", True):
+            self._scale = True
+
         # Loss class instance
-        self._L = FLoss(lossFn)
+        self._tau = tau
+        self._L = FLoss(lossFn, tau=self._tau)
 
     def predict(self, testX):
         """!
@@ -60,7 +66,31 @@ class GBRTmodel(object):
         fHat = np.zeros(testX.shape[0])
         for weight, tree in zip(self._treeWeights, self._trees):
             fHat += weight * tree.predict(testX)
-        return self.scale.inverse_transform(fHat)
+        if self._scale:
+            return self.trans.inverse_transform(fHat)
+        else:
+            return fHat
+
+    @property
+    def scale(self):
+        return self._scale
+
+    @scale.setter
+    def scale(self, sc):
+        if sc:
+            self._scale = sc
+        else:
+            self._scale = False
+
+    @property
+    def tau(self):
+        return self._tau
+
+    @tau.setter
+    def tau(self, tau):
+        assert(tau <= 1.)
+        assert(tau >= 0.)
+        self._L.tau = tau
 
     @property
     def F(self):
@@ -120,7 +150,10 @@ class GBRTmodel(object):
             print("========================================")
         # Reset model
         self.x = x
-        self.y = self.scale.fit_transform(y)
+        if self._scale:
+            self.y = self.trans.fit_transform(y)  # todo make y 2D
+        else:
+            self.y = y
         self._trees = [ConstModel(x, y)]
         self._treeWeights = [1.0]
         self._F = self._trees[0].predict(self.x)
