@@ -9,7 +9,7 @@ import re
 import numpy as np
 
 
-class AbastractLoss:
+class AbstractLoss:
     """!
     @brief Loss function base class
     """
@@ -72,28 +72,30 @@ class AbastractLoss:
 # =========================================================================== #
 # Concrete Classes
 # =========================================================================== #
-class SquaredLoss(AbastractLoss):
+class SquaredLoss(AbstractLoss):
     """!
     @brief squared error loss function concrete class.
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "se")
-        super(AbastractLoss, self).__init__(*args, **kwargs)
+        self.tau = 0
+        super(AbstractLoss, self).__init__()
 
     def loss(self, y, yhat):
-        return (y - yhat) ** 2.
+        return 0.5 * (y - yhat) ** 2.
 
     def gradLoss(self, y, yhat):
         return (y - yhat)
 
 
-class HuberLoss(AbastractLoss):
+class HuberLoss(AbstractLoss):
     """!
     @brief Absolute error loss function concrete class.
     """
     def __init__(self, *args, **kwargs):
-        self.name = kwargs.pop("name", "abs")
-        super(AbastractLoss, self).__init__(*args, **kwargs)
+        self.name = kwargs.pop("name", "huber")
+        self.tau = 0
+        super(AbstractLoss, self).__init__()
 
     def loss(self, y, yhat):
         delta = 1.0
@@ -104,6 +106,35 @@ class HuberLoss(AbastractLoss):
         return (y - yhat) / np.sqrt(((y - yhat) ** 2 / delta ** 2) + 1)
 
 
+class QuantileLoss(AbstractLoss):
+    """!
+    @brief Huber quantile function.
+    see: arxiv.org/pdf/1402.4624.pdf
+    """
+    def __init__(self, *args, **kwargs):
+        self.name = kwargs.pop("name", "quantile")
+        self.tau = kwargs.get("tau", 0.5)  # in [0, 1]
+        super(AbstractLoss, self).__init__()
+
+    def loss(self, y, yhat):
+        x = (y - yhat)
+        l = np.zeros(np.shape(x))
+        u = np.zeros(np.shape(x))
+        l[x < 0] = 1.
+        u[x >= 0] = 1.
+        # return x * (self.tau - l)
+        return self.tau * x * u + (self.tau - 1.) * x * l
+
+    def gradLoss(self, y, yhat):
+        x = (y - yhat)
+        l = np.zeros(np.shape(x))
+        u = np.zeros(np.shape(x))
+        l[x < 0] = 1.
+        u[x >= 0] = 1.
+        # return self.tau - l
+        return self.tau * u + (self.tau - 1.) * l
+
+
 # =========================================================================== #
 # Factory
 # =========================================================================== #
@@ -112,20 +143,22 @@ class FLoss(object):
     @Sbrief Simple factory which returns a concrete loss class instance
     given a loss name (str).
     """
-    def __new__(cls, name):
+    def __new__(cls, name, **kwargs):
         """!
         @param name (str) name of loss function
         """
         if re.match("se", name):
-            return SquaredLoss(name=name)
+            return SquaredLoss(name=name, **kwargs)
         if re.match("huber", name):
-            return HuberLoss(name=name)
+            return HuberLoss(name=name, **kwargs)
+        if re.match("quantile", name):
+            return QuantileLoss(name=name, **kwargs)
         else:
             print("WARNING: Requested loss unavalible. \
                    Falling back to squared error loss.")
             return SquaredLoss(name=name)
 
-    def __init__(self, name):
+    def __init__(self, name, **kwrags):
         self.name = name
 
 
