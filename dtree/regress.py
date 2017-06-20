@@ -99,6 +99,7 @@ class RegTree(BiNode):
             # store split location and split dimension on current node
             self._spl = spl
             self._spd = d
+            self._split_gain = bs[5]
 
             # create left and right child nodes
             leftNode = RegTree(splitData[0], splitData[1], lYhat, self.level + 1, self.maxDepth)

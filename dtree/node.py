@@ -24,6 +24,7 @@ class BiNode(object):
         """
         # left and right node storage
         self._nodes = (None, None)
+        self._split_gain = 0.
         self.level = level
         self.maxDepth = maxDepth
         self.minSplitPts = minSplitPts
@@ -72,6 +73,36 @@ class BiNode(object):
     @nodes.setter
     def nodes(self, Nleft=None, Nright=None):
         self._nodes = (Nleft, Nright)
+
+    @property
+    def split_gain(self):
+        return self._split_gain
+
+    @split_gain.setter
+    def split_gain(self, gain):
+        self._split_gain = gain
+
+    def feature_importances_(self, **kwargs):
+        """!
+        @brief Recursively traverses tree and tallies split axis
+        and split "benifit".
+        @return  np_1darray of feature importances in this CART tree.
+        """
+        importances = kwargs.get("imp_arr", np.zeros(self.x.shape[1]))
+        assert(len(importances) == self.x.shape[1])
+        if self._nodes != (None, None):
+            # Note the gain we achived when splitting and along what dimension we split
+            node_gain = np.zeros(len(importances))
+            node_gain[int(self._spd)] = self._split_gain
+            node_gain += importances
+            #
+            node_gain += self._nodes[0].feature_importances_(imp_arr=node_gain)
+            node_gain += self._nodes[1].feature_importances_(imp_arr=node_gain)
+            return node_gain
+        else:
+            # leaf node has no splits
+            # return importances
+            return np.zeros(len(importances))
 
     def isLeaf(self):
         """!

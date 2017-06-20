@@ -44,6 +44,16 @@ def main():
     # Zpb = iris_gbt.predictClassProbs(explan)
     # Z = Zpb[:,0]
 
+    # feature importance
+    feature_imp = iris_gbt.feature_importances
+    print("Feature Importances:")
+    print(feature_imp)
+    # expected feature importances
+    # [('sepal length (cm)', 0.13356069065846765),
+    #  ('sepal width (cm)', 0.04486948688226873),
+    #  ('petal length (cm)', 0.37067096905488794),
+    #  ('petal width (cm)', 0.45089885340437574)]
+
     # plot predictions
     Z = Z.reshape(xx.shape)
     cs = plt.contourf(xx, yy, Z, cmap=sns.diverging_palette(220, 20, sep=20, as_cmap=True))
@@ -64,6 +74,29 @@ def main():
     plt.savefig("iris_boosted_classify_ex.png")
     plt.close()
 
+def test_importances():
+    # load the iris dataset
+    iris = np.loadtxt(dataDir + "iris.csv", skiprows=1, usecols=(1,2,3,4,6), delimiter=',')
+    # class response
+    y = iris[:, -1].astype(int)
+    # explanatory vars
+    x = iris[:, 0:-1]
+    # fit boosted classification tree to data
+    iris_gbt = GBCTmodel(maxTreeDepth=3, learning_rate=0.2, subsample=0.6)
+    iris_gbt.train(x, y, maxIterations=80)
+
+    # feature importance
+    feature_imp = iris_gbt.feature_importances
+    print("Feature Importances:")
+    print("sepal_len, sepal_width, petal_len, petal_width")
+    print(feature_imp)
+    # expected feature importances
+    # [('sepal length (cm)', 0.13356069065846765),
+    #  ('sepal width (cm)', 0.04486948688226873),
+    #  ('petal length (cm)', 0.37067096905488794),
+    #  ('petal width (cm)', 0.45089885340437574)]
+
 
 if __name__ == "__main__":
     main()
+    test_importances()

@@ -174,6 +174,17 @@ class GBCTmodel(object):
         corrMask = (yhat != y)
         return np.sum(corrMask) / len(y)
 
+    @property
+    def feature_importances(self, normed=True):
+        total_sum = np.zeros(np.shape(self.x)[1])
+        for weight, tree in zip(self._treeWeights, self._trees):
+            tree_importance = tree.feature_importances_()
+            total_sum += tree_importance * weight
+        print("*** TOTAL SUM IMPORTANCES ***")
+        print(total_sum)
+        importances = total_sum / np.sum(self._treeWeights)
+        return importances / np.sum(importances)
+
 
 if __name__ == "__main__":
     pass
