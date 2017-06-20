@@ -82,8 +82,8 @@ def test_importances():
     # explanatory vars
     x = iris[:, 0:-1]
     # fit boosted classification tree to data
-    iris_gbt = GBCTmodel(maxTreeDepth=3, learning_rate=0.2, subsample=0.6)
-    iris_gbt.train(x, y, maxIterations=80)
+    iris_gbt = GBCTmodel(maxTreeDepth=2, learning_rate=0.2, subsample=0.6)
+    iris_gbt.train(x, y, maxIterations=81)
 
     # feature importance
     feature_imp = iris_gbt.feature_importances

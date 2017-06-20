@@ -82,7 +82,7 @@ class RegTree(BiNode):
         else:
             return False
 
-    def splitNode(self, cleanUp=True):
+    def splitNode(self, cleanUp=False):
         """!
         @brief Partition the data in the current node.
         Create new nodes with partitioned data sets.

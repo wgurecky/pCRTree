@@ -210,7 +210,7 @@ class GBRTmodel(object):
     @property
     def feature_importances(self):
         total_sum = np.zeros(np.shape(self.x)[1])
-        for weight, tree in zip(self._treeWeights, self._trees):
+        for weight, tree in zip(self._treeWeights[1:], self._trees[1:]):
             tree_importance = tree.feature_importances_()
             total_sum += tree_importance * weight
         print("*** TOTAL SUM IMPORTANCES ***")

@@ -159,7 +159,12 @@ class GBCTmodel(object):
             y_weights /= np.sum(y_weights)
             #
             # Store status
-            status.append([i, self.fracError(x, y), err])
+            if i % 10 == 0:
+                fraction_error = self.fracError(x, y)
+            else:
+                fraction_error = np.nan
+            status.append([i, fraction_error, err])
+            # status.append([i, self.fracError(x, y), err])
             print(" %4d     | %4e | %.3f " % (status[i][0], status[i][1], status[i][2]))
         return np.array(status)
 
