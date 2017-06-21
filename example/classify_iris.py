@@ -82,8 +82,8 @@ def test_importances():
     # explanatory vars
     x = iris[:, 0:-1]
     # fit boosted classification tree to data
-    iris_gbt = GBCTmodel(maxTreeDepth=2, learning_rate=0.2, subsample=0.6)
-    iris_gbt.train(x, y, maxIterations=81)
+    iris_gbt = GBCTmodel(maxTreeDepth=3, learning_rate=0.2, subsample=0.7)
+    iris_gbt.train(x, y, maxIterations=101)
 
     # feature importance
     feature_imp = iris_gbt.feature_importances
@@ -95,6 +95,8 @@ def test_importances():
     #  ('sepal width (cm)', 0.04486948688226873),
     #  ('petal length (cm)', 0.37067096905488794),
     #  ('petal width (cm)', 0.45089885340437574)]
+
+    # test against scikit learn
 
 
 if __name__ == "__main__":

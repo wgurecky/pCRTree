@@ -88,21 +88,24 @@ class BiNode(object):
         and split "benifit".
         @return  np_1darray of feature importances in this CART tree.
         """
-        importances = kwargs.get("imp_arr", np.zeros(self.x.shape[1]))
-        assert(len(importances) == self.x.shape[1])
+        tree_gain = kwargs.get("imp_arr", np.zeros(self.x.shape[1]))
+        assert(len(tree_gain) == self.x.shape[1])
         if self._nodes != (None, None):
             # Note the gain we achived when splitting and along what dimension we split
-            node_gain = np.zeros(len(importances))
+            node_gain = np.zeros(self.x.shape[1])
             node_gain[int(self._spd)] = self._split_gain
-            node_gain += importances
+            # node_gain[int(self._spd)] = 1.0
+            # Add split gain to tree gain
+            tree_gain += node_gain
             #
-            node_gain += self._nodes[0].feature_importances_(imp_arr=node_gain)
-            node_gain += self._nodes[1].feature_importances_(imp_arr=node_gain)
-            return node_gain
+            tree_gain = self._nodes[0].feature_importances_(imp_arr=tree_gain)
+            tree_gain = self._nodes[1].feature_importances_(imp_arr=tree_gain)
+            # print("--------")
+            # print("node gains: " + str(node_gain) + " lvl: " + str(self.level))
+            return tree_gain
         else:
             # leaf node has no splits
-            # return importances
-            return np.zeros(len(importances))
+            return tree_gain
 
     def isLeaf(self):
         """!
@@ -188,10 +191,26 @@ class BiNode(object):
         splitErrors = np.array(splitErrors)
         if split_crit is "best":
             # split on sum squared err
-            bestSplitIdx = np.argmin(splitErrors[:, 0])
+            best_gain = np.min(splitErrors[:, 0])
+            tie_mask = (splitErrors[:, 0] == best_gain)
+            n_ties = np.count_nonzero(tie_mask)
+            if n_ties >= 2:
+                candidateIdxs = np.nonzero(tie_mask)[0]
+                bestSplitIdx = np.random.choice(candidateIdxs)
+            else:
+                bestSplitIdx = np.argmin(splitErrors[:, 0])
+            # bestSplitIdx = np.argmin(splitErrors[:, 0])
         else:
             # split on gain
-            bestSplitIdx = np.argmax(splitErrors[:, -1])
+            best_gain = np.max(splitErrors[:, 5])
+            tie_mask = (splitErrors[:, 5] == best_gain)
+            n_ties = np.count_nonzero(tie_mask)
+            if n_ties >= 2:
+                candidateIdxs = np.nonzero(tie_mask)[0]
+                bestSplitIdx = np.random.choice(candidateIdxs)
+            else:
+                bestSplitIdx = np.argmax(splitErrors[:, 5])
+            # bestSplitIdx = np.argmax(splitErrors[:, -1])
         # select the best possible split
         return splitErrors[bestSplitIdx]
 

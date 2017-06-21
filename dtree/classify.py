@@ -131,7 +131,15 @@ class ClsTree(BiNode):
             eTot = eL + eR
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
-        bestSplitIdx = np.argmax(splitErrors[:, 5])
+        # check for ties
+        best_gain = np.max(splitErrors[:, 5])
+        tie_mask = (splitErrors[:, 5] == best_gain)
+        n_ties = np.count_nonzero(tie_mask)
+        if n_ties >= 2:
+            candidateIdxs = np.nonzero(tie_mask)[0]
+            bestSplitIdx = np.random.choice(candidateIdxs)
+        else:
+            bestSplitIdx = np.argmax(splitErrors[:, 5])
         # select the best possible split
         return splitErrors[bestSplitIdx]
 
