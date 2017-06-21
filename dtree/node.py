@@ -24,6 +24,7 @@ class BiNode(object):
         """
         # left and right node storage
         self._nodes = (None, None)
+        self._split_gain = 0.
         self.level = level
         self.maxDepth = maxDepth
         self.minSplitPts = minSplitPts
@@ -72,6 +73,39 @@ class BiNode(object):
     @nodes.setter
     def nodes(self, Nleft=None, Nright=None):
         self._nodes = (Nleft, Nright)
+
+    @property
+    def split_gain(self):
+        return self._split_gain
+
+    @split_gain.setter
+    def split_gain(self, gain):
+        self._split_gain = gain
+
+    def feature_importances_(self, **kwargs):
+        """!
+        @brief Recursively traverses tree and tallies split axis
+        and split "benifit".
+        @return  np_1darray of feature importances in this CART tree.
+        """
+        tree_gain = kwargs.get("imp_arr", np.zeros(self.x.shape[1]))
+        assert(len(tree_gain) == self.x.shape[1])
+        if self._nodes != (None, None):
+            # Note the gain we achived when splitting and along what dimension we split
+            node_gain = np.zeros(self.x.shape[1])
+            node_gain[int(self._spd)] = self._split_gain
+            # node_gain[int(self._spd)] = 1.0
+            # Add split gain to tree gain
+            tree_gain += node_gain
+            #
+            tree_gain = self._nodes[0].feature_importances_(imp_arr=tree_gain)
+            tree_gain = self._nodes[1].feature_importances_(imp_arr=tree_gain)
+            # print("--------")
+            # print("node gains: " + str(node_gain) + " lvl: " + str(self.level))
+            return tree_gain
+        else:
+            # leaf node has no splits
+            return tree_gain
 
     def isLeaf(self):
         """!
@@ -149,18 +183,33 @@ class BiNode(object):
             eL, vL = self._regionFit(split[0][0], split[0][1])
             eR, vR = self._regionFit(split[1][0], split[1][1])
             eTot = eL + eR
-            # compute varience reduction of split
-            gain = (1. / (len(self.y))) * nodeErr - \
-                    ((1. / (len(split[0][1]))) * eL +
-                    ((1. / (len(split[1][1]))) * eR))
+            # TODO: compute varience reduction of split
+            # gain = (1. / (len(self.y))) * nodeErr - \
+            #        ((1. / (len(split[0][1]))) * eL +
+            #        ((1. / (len(split[1][1]))) * eR))
+            gain = eTot
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
         if split_crit is "best":
             # split on sum squared err
-            bestSplitIdx = np.argmin(splitErrors[:, 0])
+            best_gain = np.min(splitErrors[:, 0])
+            tie_mask = (splitErrors[:, 0] == best_gain)
+            n_ties = np.count_nonzero(tie_mask)
+            if n_ties >= 2:
+                candidateIdxs = np.nonzero(tie_mask)[0]
+                bestSplitIdx = np.random.choice(candidateIdxs)
+            else:
+                bestSplitIdx = np.argmin(splitErrors[:, 0])
         else:
             # split on gain
-            bestSplitIdx = np.argmax(splitErrors[:, -1])
+            best_gain = np.max(splitErrors[:, 5])
+            tie_mask = (splitErrors[:, 5] == best_gain)
+            n_ties = np.count_nonzero(tie_mask)
+            if n_ties >= 2:
+                candidateIdxs = np.nonzero(tie_mask)[0]
+                bestSplitIdx = np.random.choice(candidateIdxs)
+            else:
+                bestSplitIdx = np.argmax(splitErrors[:, 5])
         # select the best possible split
         return splitErrors[bestSplitIdx]
 

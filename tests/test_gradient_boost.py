@@ -147,6 +147,10 @@ class TestGradBoosting(unittest.TestCase):
         gbt.train(self.x, self.y, maxIterations=iters)
         zHat = gbt.predict(xTest)
 
+        # print importances
+        print("Feature Importances")
+        print(gbt.feature_importances)
+
         # plot
         x1grid = np.linspace(xTest[:, 0].min(), xTest[:, 0].max(), 200)
         x2grid = np.linspace(xTest[:, 1].min(), xTest[:, 1].max(), 200)

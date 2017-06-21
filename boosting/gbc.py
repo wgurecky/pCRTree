@@ -159,7 +159,12 @@ class GBCTmodel(object):
             y_weights /= np.sum(y_weights)
             #
             # Store status
-            status.append([i, self.fracError(x, y), err])
+            if i % 10 == 0:
+                fraction_error = self.fracError(x, y)
+            else:
+                fraction_error = np.nan
+            status.append([i, fraction_error, err])
+            # status.append([i, self.fracError(x, y), err])
             print(" %4d     | %4e | %.3f " % (status[i][0], status[i][1], status[i][2]))
         return np.array(status)
 
@@ -173,6 +178,17 @@ class GBCTmodel(object):
         yhat = self.predict(x)
         corrMask = (yhat != y)
         return np.sum(corrMask) / len(y)
+
+    @property
+    def feature_importances(self, normed=True):
+        total_sum = np.zeros(np.shape(self.x)[1])
+        for weight, tree in zip(self._treeWeights, self._trees):
+            tree_importance = tree.feature_importances_()
+            total_sum += tree_importance * weight
+        print("*** TOTAL SUM IMPORTANCES ***")
+        print(total_sum)
+        importances = total_sum / np.sum(self._treeWeights)
+        return importances / np.sum(importances)
 
 
 if __name__ == "__main__":
