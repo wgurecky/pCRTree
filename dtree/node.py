@@ -170,7 +170,7 @@ class BiNode(object):
             rightData = None
         return leftExpl, leftData, rightExpl, rightData
 
-    def evalSplits(self, split_crit="gain"):
+    def evalSplits(self, split_crit="best"):
         """!
         @brief evaluate loss function in each split region
         @param split_crit str in ("best", "var"):
