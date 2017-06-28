@@ -3,7 +3,7 @@ from boosting.gbm import GBRTmodel
 from scipy.interpolate import griddata
 from pylab import cm
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 import unittest
 import os
 import numpy as np

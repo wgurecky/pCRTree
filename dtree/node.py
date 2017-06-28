@@ -183,11 +183,9 @@ class BiNode(object):
             eL, vL = self._regionFit(split[0][0], split[0][1])
             eR, vR = self._regionFit(split[1][0], split[1][1])
             eTot = eL + eR
-            # TODO: compute varience reduction of split
-            # gain = (1. / (len(self.y))) * nodeErr - \
-            #        ((1. / (len(split[0][1]))) * eL +
-            #        ((1. / (len(split[1][1]))) * eR))
-            gain = eTot
+            gain = ((len(split[0][1]) * len(split[1][1])) / \
+                   (len(split[0][1]) + len(split[1][1]))) * \
+                   (vL - vR) ** 2.
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
         if split_crit is "best":
