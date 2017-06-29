@@ -170,11 +170,14 @@ class BiNode(object):
             rightData = None
         return leftExpl, leftData, rightExpl, rightData
 
-    def evalSplits(self, split_crit="best"):
+    def evalSplits(self, split_crit="best", gain_measure="se"):
         """!
         @brief evaluate loss function in each split region
         @param split_crit str in ("best", "var"):
             Splits on sum sqr err or varience reduction criteria respectively.
+        @param gain_measure  Measure by which split gain is computed
+            "se": squared error
+            "var": varience improvement
         @return list [totError, valLeft, valRight, split_dimension, split_loc]
         """
         splitErrors = []
@@ -183,11 +186,17 @@ class BiNode(object):
             eL, vL = self._regionFit(split[0][0], split[0][1])
             eR, vR = self._regionFit(split[1][0], split[1][1])
             eTot = eL + eR
-            # TODO: compute varience reduction of split
-            # gain = (1. / (len(self.y))) * nodeErr - \
-            #        ((1. / (len(split[0][1]))) * eL +
-            #        ((1. / (len(split[1][1]))) * eR))
-            gain = eTot
+            if gain_measure == "se":
+                gain = eTot
+            else:
+                # reduction in varience from split
+                n = len(self.y)
+                n_l = len(split[0][1])
+                n_r = len(split[1][1])
+                node_var = (1. / n) * 0.5 * nodeErr
+                split_var = (1. / n_l) * 0.5 * eL + \
+                            (1. / n_r) * 0.5 * eR
+                gain = node_var - split_var
             splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
         splitErrors = np.array(splitErrors)
         if split_crit is "best":
