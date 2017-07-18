@@ -5,6 +5,10 @@
 # @date Feb 3 2017
 ##
 import numpy as np
+from numba import jit
+# from dask import delayed, compute
+# import dask.multiprocessing
+# import dask.threaded
 
 
 class BiNode(object):
@@ -146,7 +150,7 @@ class BiNode(object):
         for d in range(np.shape(self.x)[1]):
             for spl in testSplits[d]:
                 leftExpl, leftData, rightExpl, rightData = \
-                    self._maskData(spl, d, self.x, self.y)
+                    maskDataJit(spl, d, self.x, self.y)
                 yield ([leftExpl, leftData], [rightExpl, rightData], d, spl)
 
     def _maskData(self, spl, d, x, y=None):
@@ -159,7 +163,8 @@ class BiNode(object):
         @param y  Response vars 1d_array
         """
         leftMask = (x[:, int(d)] < spl)
-        rightMask = (x[:, int(d)] >= spl)
+        # rightMask = (x[:, int(d)] >= spl)
+        rightMask = np.invert(leftMask)
         leftExpl = x[leftMask]
         rightExpl = x[rightMask]
         if y is not None:
@@ -181,10 +186,11 @@ class BiNode(object):
         @return list [totError, valLeft, valRight, split_dimension, split_loc]
         """
         splitErrors = []
-        nodeErr = self._regionFit(self.x, self.y)[0]
-        for split in self.iterSplitData():
-            eL, vL = self._regionFit(split[0][0], split[0][1])
-            eR, vR = self._regionFit(split[1][0], split[1][1])
+        nodeErr = regionFitJit(self.x, self.y)[0]
+        # Internal Split Eval
+        def internalEvalSplit(split, node_err):
+            eL, vL = regionFitJit(split[0][0], split[0][1])
+            eR, vR = regionFitJit(split[1][0], split[1][1])
             eTot = eL + eR
             if gain_measure == "se":
                 gain = eTot
@@ -193,11 +199,17 @@ class BiNode(object):
                 n = len(self.y)
                 n_l = len(split[0][1])
                 n_r = len(split[1][1])
-                node_var = (1. / n) * 0.5 * nodeErr
+                node_var = (1. / n) * 0.5 * node_err
                 split_var = (1. / n_l) * 0.5 * eL + \
                             (1. / n_r) * 0.5 * eR
                 gain = node_var - split_var
-            splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
+            return [eTot, vL, vR, split[2], split[3], gain]
+        splitErrors = [internalEvalSplit(slt, nodeErr) for slt in self.iterSplitData()]
+        #
+        # splitErrors_vals = [delayed(internalEvalSplit)(slt, nodeErr) for slt in self.iterSplitData()]
+        # splitErrors = compute(*splitErrors_vals, get=dask.multiprocessing.get)
+        # splitErrors = compute(*splitErrors_vals, get=dask.threaded.get)
+        #
         splitErrors = np.array(splitErrors)
         if split_crit is "best":
             # split on sum squared err
@@ -245,3 +257,39 @@ class BiNode(object):
         @return (err, bestFunctionValue)
         """
         raise NotImplementedError
+
+
+# ============ NUMBA FUNCTIONS ============ #
+@jit(nopython=True)
+def regionFitJit(region_x, region_y):
+    """!
+    @brief Evaulate region loss fuction:
+        - squared errors
+    @return (loss, regionYhat)
+    """
+    yhat = np.mean(region_y)
+    # residual sum squared error
+    rsse = np.sum((region_y - yhat) ** 2)
+    return rsse, yhat
+
+
+@jit(nopython=True)
+def maskDataJit(spl, d, x, y):
+    """!
+    @brief Given split location and dimension along which to split,
+    partition the data into left and right datasets.
+    @param spl  Split location (int or float)
+    @param d    Split dimension (int)
+    @param x  Explanatory variables nd_array
+    @param y  Response vars 1d_array
+    """
+    leftMask = (x[:, int(d)] < spl)
+    # rightMask = (x[:, int(d)] >= spl)
+    rightMask = np.invert(leftMask)
+    leftExpl = x[leftMask]
+    rightExpl = x[rightMask]
+    #
+    leftData = y[leftMask]
+    rightData = y[rightMask]
+    #
+    return leftExpl, leftData, rightExpl, rightData
