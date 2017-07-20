@@ -5,7 +5,7 @@
 ##
 from __future__ import division
 import numpy as np
-from dtree.node import BiNode
+from dtree.node import BiNode, maskDataJit
 
 
 class RegTree(BiNode):
@@ -51,7 +51,7 @@ class RegTree(BiNode):
             indicies of original X vector and corrosponding resopnse Y
         """
         if self._nodes != (None, None):
-            leftX, lIdX, rightX, rIdX = self._maskData(self._spl, self._spd, testX, testXIdx)
+            leftX, lIdX, rightX, rIdX = maskDataJit(self._spl, self._spd, testX, testXIdx)
             lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
             rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
             return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
@@ -63,12 +63,10 @@ class RegTree(BiNode):
 
     def _regionFit(self, region_x, region_y, lossFn="squared"):
         """!
-        @brief Evaulate region loss fuction:
-            - squared errors
+        @brief Evaulate region squared error loss fuction
         @return (loss, regionYhat)
         """
         yhat = np.mean(region_y)
-        # residual sum squared error
         rsse = np.sum((region_y - yhat) ** 2)
         return rsse, yhat
 
@@ -94,7 +92,7 @@ class RegTree(BiNode):
             lYhat = bs[1]
             rYhat = bs[2]
             d, spl = bs[3], bs[4]
-            splitData = self._maskData(spl, d, self.x, self.y)
+            splitData = maskDataJit(spl, d, self.x, self.y)
 
             # store split location and split dimension on current node
             self._spl = spl

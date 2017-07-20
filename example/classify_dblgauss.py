@@ -29,30 +29,36 @@ def main():
 
     # boosted Classification tree implementation
     bdt = GBCTmodel(maxTreeDepth=4, learning_rate=0.5, subsample=0.6)
+    print("fitting pCRTree")
     bdt.train(X, y, maxIterations=50)
+
     # SKlearn implementation
-    skt = DecisionTreeClassifier(max_depth=5)
-    skt.fit(X, y)
+    # print("fitting sklearn")
+    # skt = DecisionTreeClassifier(max_depth=5)
+    # skt.fit(X, y)
 
     plot_colors = ("b", "firebrick")
     plot_step = 0.02
     class_names = "AB"
 
+    """
     plt.figure(figsize=(10, 5))
 
     # Plot the decision boundaries
     plt.subplot(111)
+    """
     x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
     y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, plot_step),
                          np.arange(y_min, y_max, plot_step))
-
+    print("predicting pCRTree")
     # compute predicted descision boundaries
     Z = bdt.predict(np.c_[xx.ravel(), yy.ravel()])
 
     # compare against sklearn
     # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
 
+    """
     # Plot
     Z = Z.reshape(xx.shape)
     cs = plt.contourf(xx, yy, Z,
@@ -74,6 +80,7 @@ def main():
 
     plt.savefig("dblgauss_boosted_classify_ex.png")
     plt.close()
+    """
 
 
 if __name__ == "__main__":

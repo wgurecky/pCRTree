@@ -6,9 +6,6 @@
 ##
 import numpy as np
 from numba import jit
-# from dask import delayed, compute
-# import dask.multiprocessing
-# import dask.threaded
 
 
 class BiNode(object):
@@ -92,20 +89,23 @@ class BiNode(object):
         and split "benifit".
         @return  np_1darray of feature importances in this CART tree.
         """
+        verbose = kwargs.pop("verbose", 0)
         tree_gain = kwargs.get("imp_arr", np.zeros(self.x.shape[1]))
         assert(len(tree_gain) == self.x.shape[1])
         if self._nodes != (None, None):
-            # Note the gain we achived when splitting and along what dimension we split
+            # Note the gain we achived when splitting
+            # and along what dimension we split
             node_gain = np.zeros(self.x.shape[1])
             node_gain[int(self._spd)] = self._split_gain
-            # node_gain[int(self._spd)] = 1.0
             # Add split gain to tree gain
             tree_gain += node_gain
             #
             tree_gain = self._nodes[0].feature_importances_(imp_arr=tree_gain)
             tree_gain = self._nodes[1].feature_importances_(imp_arr=tree_gain)
-            # print("--------")
-            # print("node gains: " + str(node_gain) + " lvl: " + str(self.level))
+            if verbose:
+                print("----------")
+                print("node gains: " + \
+                      str(node_gain) + " lvl: " + str(self.level))
             return tree_gain
         else:
             # leaf node has no splits
@@ -175,6 +175,24 @@ class BiNode(object):
             rightData = None
         return leftExpl, leftData, rightExpl, rightData
 
+    @staticmethod
+    def internalEvalSplit(split, node_err, gain_measure):
+        eL, vL = regionFitJit(split[0][0], split[0][1])
+        eR, vR = regionFitJit(split[1][0], split[1][1])
+        eTot = eL + eR
+        if gain_measure == "se":
+            gain = eTot
+        else:
+            # reduction in varience from split
+            n = len(self.y)
+            n_l = len(split[0][1])
+            n_r = len(split[1][1])
+            node_var = (1. / n) * 0.5 * node_err
+            split_var = (1. / n_l) * 0.5 * eL + \
+                        (1. / n_r) * 0.5 * eR
+            gain = node_var - split_var
+        return [eTot, vL, vR, split[2], split[3], gain]
+
     def evalSplits(self, split_crit="best", gain_measure="se"):
         """!
         @brief evaluate loss function in each split region
@@ -188,27 +206,8 @@ class BiNode(object):
         splitErrors = []
         nodeErr = regionFitJit(self.x, self.y)[0]
         # Internal Split Eval
-        def internalEvalSplit(split, node_err):
-            eL, vL = regionFitJit(split[0][0], split[0][1])
-            eR, vR = regionFitJit(split[1][0], split[1][1])
-            eTot = eL + eR
-            if gain_measure == "se":
-                gain = eTot
-            else:
-                # reduction in varience from split
-                n = len(self.y)
-                n_l = len(split[0][1])
-                n_r = len(split[1][1])
-                node_var = (1. / n) * 0.5 * node_err
-                split_var = (1. / n_l) * 0.5 * eL + \
-                            (1. / n_r) * 0.5 * eR
-                gain = node_var - split_var
-            return [eTot, vL, vR, split[2], split[3], gain]
-        splitErrors = [internalEvalSplit(slt, nodeErr) for slt in self.iterSplitData()]
-        #
-        # splitErrors_vals = [delayed(internalEvalSplit)(slt, nodeErr) for slt in self.iterSplitData()]
-        # splitErrors = compute(*splitErrors_vals, get=dask.multiprocessing.get)
-        # splitErrors = compute(*splitErrors_vals, get=dask.threaded.get)
+        splitErrors = [self.internalEvalSplit(slt, nodeErr, gain_measure) \
+                       for slt in self.iterSplitData()]
         #
         splitErrors = np.array(splitErrors)
         if split_crit is "best":
@@ -259,16 +258,18 @@ class BiNode(object):
         raise NotImplementedError
 
 
-# ============ NUMBA FUNCTIONS ============ #
+# ============================NUMBA FUNCTIONS================================ #
 @jit(nopython=True)
 def regionFitJit(region_x, region_y):
     """!
-    @brief Evaulate region loss fuction:
-        - squared errors
+    @brief Evaulate region loss fuction
+    (Squared errors).  Return residual sum squared
+    errors and the region prediction (mean).
+    @param region_x np_ndarray predictors in this region
+    @param region_y np_1darray responses in this region
     @return (loss, regionYhat)
     """
     yhat = np.mean(region_y)
-    # residual sum squared error
     rsse = np.sum((region_y - yhat) ** 2)
     return rsse, yhat
 
@@ -284,12 +285,9 @@ def maskDataJit(spl, d, x, y):
     @param y  Response vars 1d_array
     """
     leftMask = (x[:, int(d)] < spl)
-    # rightMask = (x[:, int(d)] >= spl)
     rightMask = np.invert(leftMask)
     leftExpl = x[leftMask]
     rightExpl = x[rightMask]
-    #
     leftData = y[leftMask]
     rightData = y[rightMask]
-    #
     return leftExpl, leftData, rightExpl, rightData
