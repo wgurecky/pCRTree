@@ -62,21 +62,18 @@ class GBCTmodel(object):
         """!
         @brief Computes the class histogram at input testX locs
         """
-        # tree_weight * (weights * (T_i(x) == K))
-        histCols = []
-        lenX = testX.shape[0]
-        for k in np.sort(np.unique(self.y)):
-            counts = np.zeros(lenX)
-            for i, tree in enumerate(self._trees):
+        len_x = testX.shape[0]
+        unique_cls_labels = np.sort(np.unique(self.y))
+        histCols = np.zeros((len(unique_cls_labels), len_x))
+        for i, tree in enumerate(self._trees):
+            tree_predictions = tree.predict(testX)
+            for v, k in enumerate(unique_cls_labels):
                 # where did this tree correcly predict?
-                Ic = np.zeros(lenX)
-                corrMask = (k == tree.predict(testX))
-                # set diagonal to correctMask
+                Ic = np.zeros(len_x)
+                corrMask = (k == tree_predictions)
                 Ic[corrMask] = 1
-                # corrPredict[np.diag_indices_from(corrPredict)] = Ic
-                counts += self._treeWeights[i] * Ic
-            histCols.append(counts)
-        hist = np.array(histCols).T
+                histCols[v] += self._treeWeights[i] * Ic
+        hist = histCols.T
         return hist
 
     def predictClassProbs(self, testX, **kwargs):

@@ -41,12 +41,10 @@ def main():
     plot_step = 0.02
     class_names = "AB"
 
-    """
     plt.figure(figsize=(10, 5))
 
     # Plot the decision boundaries
     plt.subplot(111)
-    """
     x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
     y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, plot_step),
@@ -58,7 +56,6 @@ def main():
     # compare against sklearn
     # Z = skt.predict(np.c_[xx.ravel(), yy.ravel()])
 
-    """
     # Plot
     Z = Z.reshape(xx.shape)
     cs = plt.contourf(xx, yy, Z,
@@ -80,7 +77,6 @@ def main():
 
     plt.savefig("dblgauss_boosted_classify_ex.png")
     plt.close()
-    """
 
 
 if __name__ == "__main__":
