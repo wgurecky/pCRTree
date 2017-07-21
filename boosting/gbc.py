@@ -46,6 +46,7 @@ class GBCTmodel(object):
         # number of class labels
         self._K = None
 
+    @profile
     def predict(self, testX, **kwargs):
         """!
         @brief Evaluate boosted classification tree model.
@@ -58,6 +59,7 @@ class GBCTmodel(object):
         fHat = np.argmax(hist, axis=1)
         return fHat
 
+    @profile
     def _buildHist(self, testX):
         """!
         @brief Computes the class histogram at input testX locs

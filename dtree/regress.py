@@ -5,6 +5,7 @@
 ##
 from __future__ import division
 import numpy as np
+from numba import jit
 from dtree.node import BiNode, maskDataJit
 
 
@@ -126,4 +127,20 @@ class RegTree(BiNode):
                         (1. / n_r) * 0.5 * eR
             gain = node_var - split_var
         return [eTot, vL, vR, split[2], split[3], gain]
+
+
+# ============================NUMBA FUNCTIONS================================ #
+@jit(nopython=True)
+def regionFitJit(region_x, region_y):
+    """!
+    @brief Evaulate region loss fuction
+    (Squared errors).  Return residual sum squared
+    errors and the region prediction (mean).
+    @param region_x np_ndarray predictors in this region
+    @param region_y np_1darray responses in this region
+    @return (loss, regionYhat)
+    """
+    yhat = np.mean(region_y)
+    rsse = np.sum((region_y - yhat) ** 2)
+    return rsse, yhat
 

@@ -247,21 +247,6 @@ class BiNode(object):
 
 # ============================NUMBA FUNCTIONS================================ #
 @jit(nopython=True)
-def regionFitJit(region_x, region_y):
-    """!
-    @brief Evaulate region loss fuction
-    (Squared errors).  Return residual sum squared
-    errors and the region prediction (mean).
-    @param region_x np_ndarray predictors in this region
-    @param region_y np_1darray responses in this region
-    @return (loss, regionYhat)
-    """
-    yhat = np.mean(region_y)
-    rsse = np.sum((region_y - yhat) ** 2)
-    return rsse, yhat
-
-
-@jit(nopython=True)
 def maskDataJit(spl, d, x, y):
     """!
     @brief Given split location and dimension along which to split,
