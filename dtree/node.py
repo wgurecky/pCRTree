@@ -83,7 +83,6 @@ class BiNode(object):
     def split_gain(self, gain):
         self._split_gain = gain
 
-    @profile
     def predict(self, testX):
         """!
         @brief Given some testing input return regression tree predictions.
