@@ -55,44 +55,6 @@ class ClsTree(BiNode):
         self._weights = weights
         self._weights /= np.sum(weights)
 
-    def predict(self, testX):
-        """!
-        @brief Given some testing input return classification tree predictions.
-        Traverses the tree recursively and provides leaf node predictions.
-        @param testX nd_array of ints or floats.  Test explanatory input array
-        @return 1d_array y_hat (len=len(testX)) prediction array
-        """
-        if len(np.shape(testX)) == 1:
-            testX = np.array([testX]).T
-        if testX.shape[1] != self.ndim:
-            print("ERROR: dimension mismatch.")
-            raise RuntimeError
-        # xHat, yHat = self.nodePredict(testX)
-        oIdx = np.arange(len(testX))
-        xHat, yHat, xIdx = self.bNodePredict(testX, np.arange(len(testX)))
-        if not np.array_equal(testX[xIdx], xHat):
-            print("WARNING: Shifted output order!")
-        shift = np.lexsort((oIdx, xIdx))
-        return yHat[shift]
-
-    def bNodePredict(self, testX, testXIdx):
-        """!
-        @brief Recursively evaluate internal node splits and leaf predictions.
-        @return (xOut, yOut, xIdx_Out)
-            indicies of original X vector and corrosponding resopnse Y
-        """
-        if self._nodes != (None, None):
-            leftX, lIdX, rightX, rIdX = \
-                    maskDataJit(self._spl, self._spd, testX, testXIdx)
-            lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
-            rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
-            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
-        else:
-            # is leaf node
-            xHat = testX
-            yHat = self._yhat * np.ones(len(testX))
-            return xHat, yHat, testXIdx
-
     def _regionFit(self, region_x, region_y, region_weights):
         """!
         @brief Evaulate region loss fuction:
@@ -157,7 +119,7 @@ class ClsTree(BiNode):
                     maskDataJit_weighted(spl, d, self.x, self.y, self._weights)
                 yield ([leftExpl, leftData, leftWeights], [rightExpl, rightData, rightWeights], d, spl)
 
-    def _maskData(self, spl, d, x, y=None, w=None):
+    def _maskData_weighted(self, spl, d, x, y=None, w=None):
         """!
         @brief Given split location and dimension along which to split,
         partition the data into left and right datasets.

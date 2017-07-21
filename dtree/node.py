@@ -83,6 +83,45 @@ class BiNode(object):
     def split_gain(self, gain):
         self._split_gain = gain
 
+    @profile
+    def predict(self, testX):
+        """!
+        @brief Given some testing input return regression tree predictions.
+        Traverses the tree recursively and provides leaf node predictions.
+        @param testX nd_array of ints or floats.  Test explanatory input array
+        @return 1d_array y_hat (len=len(testX)) prediction array
+        """
+        if len(np.shape(testX)) == 1:
+            testX = np.array([testX]).T
+        if testX.shape[1] != self.ndim:
+            print("ERROR: dimension mismatch.")
+            raise RuntimeError
+        # xHat, yHat = self.nodePredict(testX)
+        oIdx = np.arange(len(testX))
+        xHat, yHat, xIdx = self.bNodePredict(testX, np.arange(len(testX)))
+        if not np.array_equal(testX[xIdx], xHat):
+            print("WARNING: Shifted output order!")
+        shift = np.lexsort((oIdx, xIdx))
+        return yHat[shift]
+
+    def bNodePredict(self, testX, testXIdx):
+        """!
+        @brief Recursively evaluate internal node splits and leaf predictions.
+        @return (xOut, yOut, xIdx_Out)
+            indicies of original X vector and corrosponding resopnse Y
+        """
+        if self._nodes != (None, None):
+            leftX, lIdX, rightX, rIdX = maskDataJit(self._spl, self._spd, testX, testXIdx)
+            lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
+            rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
+            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
+        else:
+            # is leaf node
+            xHat = testX
+            yHat = self._yhat * np.ones(len(testX))
+            return xHat, yHat, testXIdx
+
+
     def feature_importances_(self, **kwargs):
         """!
         @brief Recursively traverses tree and tallies split axis
@@ -175,63 +214,11 @@ class BiNode(object):
             rightData = None
         return leftExpl, leftData, rightExpl, rightData
 
-    @staticmethod
-    def internalEvalSplit(split, node_err, gain_measure):
-        eL, vL = regionFitJit(split[0][0], split[0][1])
-        eR, vR = regionFitJit(split[1][0], split[1][1])
-        eTot = eL + eR
-        if gain_measure == "se":
-            gain = eTot
-        else:
-            # reduction in varience from split
-            n = len(self.y)
-            n_l = len(split[0][1])
-            n_r = len(split[1][1])
-            node_var = (1. / n) * 0.5 * node_err
-            split_var = (1. / n_l) * 0.5 * eL + \
-                        (1. / n_r) * 0.5 * eR
-            gain = node_var - split_var
-        return [eTot, vL, vR, split[2], split[3], gain]
-
     def evalSplits(self, split_crit="best", gain_measure="se"):
         """!
         @brief evaluate loss function in each split region
-        @param split_crit str in ("best", "var"):
-            Splits on sum sqr err or varience reduction criteria respectively.
-        @param gain_measure  Measure by which split gain is computed
-            "se": squared error
-            "var": varience improvement
-        @return list [totError, valLeft, valRight, split_dimension, split_loc]
         """
-        splitErrors = []
-        nodeErr = regionFitJit(self.x, self.y)[0]
-        # Internal Split Eval
-        splitErrors = [self.internalEvalSplit(slt, nodeErr, gain_measure) \
-                       for slt in self.iterSplitData()]
-        #
-        splitErrors = np.array(splitErrors)
-        if split_crit is "best":
-            # split on sum squared err
-            best_gain = np.min(splitErrors[:, 0])
-            tie_mask = (splitErrors[:, 0] == best_gain)
-            n_ties = np.count_nonzero(tie_mask)
-            if n_ties >= 2:
-                candidateIdxs = np.nonzero(tie_mask)[0]
-                bestSplitIdx = np.random.choice(candidateIdxs)
-            else:
-                bestSplitIdx = np.argmin(splitErrors[:, 0])
-        else:
-            # split on gain
-            best_gain = np.max(splitErrors[:, 5])
-            tie_mask = (splitErrors[:, 5] == best_gain)
-            n_ties = np.count_nonzero(tie_mask)
-            if n_ties >= 2:
-                candidateIdxs = np.nonzero(tie_mask)[0]
-                bestSplitIdx = np.random.choice(candidateIdxs)
-            else:
-                bestSplitIdx = np.argmax(splitErrors[:, 5])
-        # select the best possible split
-        return splitErrors[bestSplitIdx]
+        raise NotImplementedError
 
     def fitTree(self):
         """!
