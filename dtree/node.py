@@ -45,6 +45,10 @@ class BiNode(object):
 
     @property
     def spl(self):
+        """!
+        @brief Split location (float or int)
+        Location on split axis, see: self.spd
+        """
         return self._spl
 
     @spl.setter
@@ -53,6 +57,9 @@ class BiNode(object):
 
     @property
     def spd(self):
+        """!
+        @brief Split dimension (aka split axis)
+        """
         return self._spd
 
     @spd.setter
@@ -95,7 +102,6 @@ class BiNode(object):
         if testX.shape[1] != self.ndim:
             print("ERROR: dimension mismatch.")
             raise RuntimeError
-        # xHat, yHat = self.nodePredict(testX)
         oIdx = np.arange(len(testX))
         xHat, yHat, xIdx = self.bNodePredict(testX, np.arange(len(testX)))
         if not np.array_equal(testX[xIdx], xHat):
