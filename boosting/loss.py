@@ -135,6 +135,23 @@ class QuantileLoss(AbstractLoss):
         return self.tau * u + (self.tau - 1.) * l
 
 
+class SAMMELoss(AbstractLoss):
+    """!
+    @brief Based on notes from:
+    web.stanford.edu/~hastie/Papers/samme.pdf
+    classes.soe.ucsc.edu/cmps242/Fall09/proj/Mario_Rodriguez_Multiclass_Boosting_talk.pdf
+    Used for multiclass classification in place of
+    traditional adaboost.m1 two class model
+    """
+    def __init__(self, n_class_labels, *args, **kwargs):
+        self.name = kwargs.pop("name", "samme")
+        self.k = n_class_labels
+        super(AbstractLoss, self).__init__()
+
+    def loss(self, y, yhat):
+        return np.exp(-(1. / self.k) * y.T * yhat)
+
+
 # =========================================================================== #
 # Factory
 # =========================================================================== #
