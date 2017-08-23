@@ -23,15 +23,15 @@ class GBRTmodel(object):
     - huber
     - squared-error
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='se', tau=0.5, **kwargs):
+    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, loss='se', tau=0.5, **kwargs):
         """!
         @param maxTreeDepth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
             boosted iteration.
-        @param lossFn  (str) Target function to minimize at each iteration of boosting
-            string in ("se", "huber")
+        @param loss  (str) Target function to minimize at each iteration of boosting
+            string in ("se", "huber", "quantile")
         """
         self.maxTreeDepth = maxTreeDepth
         self.learning_rate = learning_rate
@@ -54,7 +54,7 @@ class GBRTmodel(object):
 
         # Loss class instance
         self._tau = tau
-        self._L = FLoss(lossFn, tau=self._tau)
+        self._L = FLoss(loss, tau=self._tau)
 
     def predict(self, testX):
         """!

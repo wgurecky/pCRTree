@@ -74,7 +74,7 @@ class AbstractLoss:
 # =========================================================================== #
 class SquaredLoss(AbstractLoss):
     """!
-    @brief squared error loss function concrete class.
+    @brief Squared error loss function concrete class.
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "se")
@@ -90,7 +90,8 @@ class SquaredLoss(AbstractLoss):
 
 class HuberLoss(AbstractLoss):
     """!
-    @brief Absolute error loss function concrete class.
+    @brief Huber quantile function.
+    see: arxiv.org/pdf/1402.4624.pdf
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "huber")
@@ -108,8 +109,7 @@ class HuberLoss(AbstractLoss):
 
 class QuantileLoss(AbstractLoss):
     """!
-    @brief Huber quantile function.
-    see: arxiv.org/pdf/1402.4624.pdf
+    @brief Absolute error loss function concrete class.
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "quantile")

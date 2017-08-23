@@ -52,7 +52,7 @@ class TestGradBoosting(unittest.TestCase):
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
         iters = 500
-        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.3, subsample=0.6, lossFn="se")
+        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.3, subsample=0.6, loss="se")
         status = gbt.train(self.xTrain, self.yTrain, maxIterations=iters, xTest=self.xTest, yTest=self.yTest)
 
         # Eval 1d regression model
@@ -100,7 +100,7 @@ class TestGradBoosting(unittest.TestCase):
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.2, subsample=0.9, lossFn="quantile", tau=0.5)
+        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.2, subsample=0.9, loss="quantile", tau=0.5)
         gbt.train(X, y, maxIterations=350)
         y_median = gbt.predict(xx)
 

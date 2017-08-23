@@ -20,14 +20,14 @@ class GBCTmodel(object):
     Implemented loss functions:
     - exp (multi-class exp loss used in SAMME method)
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='exp', **kwargs):
+    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, loss='exp', **kwargs):
         """!
         @param maxTreeDepth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBCT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
             boosted iteration.
-        @param lossFn  (str) Target function to minimize at each iteration of boosting
+        @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("exp")
         """
         self.maxTreeDepth = maxTreeDepth
