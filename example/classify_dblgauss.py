@@ -28,9 +28,9 @@ def main():
     y = np.concatenate((y1, - y2 + 1))
 
     # boosted Classification tree implementation
-    bdt = GBCTmodel(maxTreeDepth=4, learning_rate=0.2, subsample=0.6)
+    bdt = GBCTmodel(max_depth=4, learning_rate=0.2, subsample=0.6)
     print("fitting pCRTree")
-    bdt.train(X, y, maxIterations=100)
+    bdt.train(X, y, n_estimators=100)
 
     # SKlearn implementation
     # print("fitting sklearn")

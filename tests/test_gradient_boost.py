@@ -52,8 +52,8 @@ class TestGradBoosting(unittest.TestCase):
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
         iters = 500
-        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.3, subsample=0.6, loss="se")
-        status = gbt.train(self.xTrain, self.yTrain, maxIterations=iters, xTest=self.xTest, yTest=self.yTest)
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.3, subsample=0.6, loss="se")
+        status = gbt.train(self.xTrain, self.yTrain, n_estimators=iters, xTest=self.xTest, yTest=self.yTest)
 
         # Eval 1d regression model
         xTest = np.linspace(0, 10, 400)
@@ -100,18 +100,18 @@ class TestGradBoosting(unittest.TestCase):
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(maxTreeDepth=1, learning_rate=0.2, subsample=0.9, loss="quantile", tau=0.5)
-        gbt.train(X, y, maxIterations=350)
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.2, subsample=0.9, loss="quantile", tau=0.5)
+        gbt.train(X, y, n_estimators=350)
         y_median = gbt.predict(xx)
 
         # lower
         gbt.tau = 0.1
-        gbt.train(X, y, maxIterations=350)
+        gbt.train(X, y, n_estimators=350)
         y_lower = gbt.predict(xx)
 
         # upper
         gbt.tau = 0.9
-        gbt.train(X, y, maxIterations=350)
+        gbt.train(X, y, n_estimators=350)
         y_upper = gbt.predict(xx)
 
         # Plot the function, the prediction and the 90% confidence interval based on
@@ -135,7 +135,7 @@ class TestGradBoosting(unittest.TestCase):
 
     def test2dBoostedReg(self):
         iters = 40
-        gbt = GBRTmodel(maxTreeDepth=3, learning_rate=0.2, subsample=0.5)
+        gbt = GBRTmodel(max_depth=3, learning_rate=0.2, subsample=0.5)
 
         # generate testing input
         x1 = np.linspace(0, 2 * np.pi, 50)
@@ -144,12 +144,12 @@ class TestGradBoosting(unittest.TestCase):
         xTest = np.array([X1.flatten(), X2.flatten()]).T
 
         # fit 2d boosted regression tree
-        gbt.train(self.x, self.y, maxIterations=iters)
+        gbt.train(self.x, self.y, n_estimators=iters)
         zHat = gbt.predict(xTest)
 
         # print importances
         print("Feature Importances")
-        print(gbt.feature_importances)
+        print(gbt.feature_importances_)
 
         # plot
         x1grid = np.linspace(xTest[:, 0].min(), xTest[:, 0].max(), 200)

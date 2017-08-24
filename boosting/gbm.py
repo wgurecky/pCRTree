@@ -23,9 +23,9 @@ class GBRTmodel(object):
     - huber
     - squared-error
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, loss='se', tau=0.5, **kwargs):
+    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', tau=0.5, **kwargs):
         """!
-        @param maxTreeDepth  Maximum depth of each weak learner in the model.
+        @param max_depth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
@@ -33,7 +33,7 @@ class GBRTmodel(object):
         @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("se", "huber", "quantile")
         """
-        self.maxTreeDepth = maxTreeDepth
+        self.max_depth = max_depth
         self.learning_rate = learning_rate
         self.subsample = subsample
         self.trans = StandardScaler()
@@ -110,7 +110,7 @@ class GBRTmodel(object):
     def trees(self):
         return self._trees
 
-    def train(self, x, y, maxIterations=5, warmStart=0, **kwargs):
+    def train(self, x, y, n_estimators=5, warmStart=0, **kwargs):
         """!
         @brief Train the regression tree model by the gradient boosting
         method.
@@ -137,7 +137,7 @@ class GBRTmodel(object):
         \f]
         @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
         @param y (1d_array) Response variable vector. Shape = (N_support_pts,)
-        @param maxIterations  Max number of boosted iterations.
+        @param n_estimators  Max number of boosted iterations.
         """
         xTest = kwargs.pop("xTest", None)
         yTest = kwargs.pop("yTest", None)
@@ -157,13 +157,13 @@ class GBRTmodel(object):
         self._trees = [ConstModel(x, y)]
         self._treeWeights = [1.0]
         self._F = self._trees[0].predict(self.x)
-        for i in range(maxIterations):
+        for i in range(n_estimators):
             # def sub sample training set
             sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
             # fit learner to pseudo-residuals
             self._trees.append(RegTree(self.x[sub_idx],
                                        self._L.gradLoss(self.y[sub_idx], self._F[sub_idx]),
-                                       maxDepth=self.maxTreeDepth,
+                                       maxDepth=self.max_depth,
                                        )
                               )
             self._trees[-1].fitTree()
@@ -208,7 +208,7 @@ class GBRTmodel(object):
             return None
 
     @property
-    def feature_importances(self):
+    def feature_importances_(self):
         total_sum = np.zeros(np.shape(self.x)[1])
         for weight, tree in zip(self._treeWeights[1:], self._trees[1:]):
             tree_importance = tree.feature_importances_()

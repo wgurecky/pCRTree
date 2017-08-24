@@ -20,9 +20,9 @@ class GBCTmodel(object):
     Implemented loss functions:
     - exp (multi-class exp loss used in SAMME method)
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, loss='exp', **kwargs):
+    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='exp', **kwargs):
         """!
-        @param maxTreeDepth  Maximum depth of each weak learner in the model.
+        @param max_depth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBCT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
@@ -30,7 +30,7 @@ class GBCTmodel(object):
         @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("exp")
         """
-        self.maxTreeDepth = maxTreeDepth
+        self.max_depth = max_depth
         self.learning_rate = learning_rate
         self.subsample = subsample
 
@@ -113,12 +113,12 @@ class GBCTmodel(object):
     def trees(self):
         return self._trees
 
-    def train(self, x, y, maxIterations=5, warmStart=0, **kwargs):
+    def train(self, x, y, n_estimators=5, warmStart=0, **kwargs):
         """!
         @brief Train the classification tree model by the SAMME method.
         @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
         @param y (1d_array) Response class vector. Shape = (N_support_pts,)
-        @param maxIterations  Max number of boosted iterations.
+        @param n_estimators  Max number of boosted iterations.
         """
         print("Iteration | Training Err | Tree weight ")
         print("========================================")
@@ -130,12 +130,12 @@ class GBCTmodel(object):
         lenY = len(self.y)
         y_weights = np.ones(lenY) / lenY
         self._K = len(np.unique(self.y))
-        for i in range(maxIterations):
+        for i in range(n_estimators):
             # subsample training data
             sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
             # Fit classification tree to training data with current weights
             self._trees.append(ClsTree(self.x[sub_idx], self.y[sub_idx],
-                maxDepth=self.maxTreeDepth, weights=y_weights[sub_idx]))
+                maxDepth=self.max_depth, weights=y_weights[sub_idx]))
             # y_weights = self._trees[i].weights
             self._trees[i].fitTree()
             #
@@ -177,7 +177,7 @@ class GBCTmodel(object):
         return np.sum(corrMask) / len(y)
 
     @property
-    def feature_importances(self, normed=True):
+    def feature_importances_(self, normed=True):
         total_sum = np.zeros(np.shape(self.x)[1])
         for weight, tree in zip(self._treeWeights, self._trees):
             tree_importance = tree.feature_importances_()

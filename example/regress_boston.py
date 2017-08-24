@@ -19,12 +19,12 @@ def main():
     X_test, y_test = X[offset:], y[offset:]
     # fit model
     iters = 50
-    gbt = GBRTmodel(maxTreeDepth=4, learning_rate=0.05, subsample=0.6)
-    gbt.train(X_train, y_train, maxIterations=iters)
+    gbt = GBRTmodel(max_depth=4, learning_rate=0.05, subsample=0.6)
+    gbt.train(X_train, y_train, n_estimators=iters)
 
     # print importances
     print("Feature Importances")
-    feature_importance = gbt.feature_importances
+    feature_importance = gbt.feature_importances_
     print(feature_importance)
 
     try:
