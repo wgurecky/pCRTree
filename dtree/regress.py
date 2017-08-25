@@ -53,6 +53,8 @@ class RegTree(BiNode):
             return 0
         else:
             bs = self.evalSplits()
+            if bs is None:
+                return 0
             lYhat = bs[1]
             rYhat = bs[2]
             d, spl = bs[3], bs[4]
@@ -80,13 +82,12 @@ class RegTree(BiNode):
             "var": varience improvement
         @return list [totError, valLeft, valRight, split_dimension, split_loc]
         """
-        splitErrors = []
         nodeErr = regionFitJit(self.x, self.y)[0]
         # Internal Split Eval
-        splitErrors = [self.internalEvalSplit(slt, nodeErr, gain_measure) \
-                       for slt in self.iterSplitData()]
-        #
-        splitErrors = np.array(splitErrors)
+        splitErrors = np.array([self.internalEvalSplit(slt, nodeErr, gain_measure) \
+                                for slt in self.iterSplitData()])
+        if splitErrors.size == 0:
+            return None
         if split_crit is "best":
             # split on sum squared err
             best_gain = np.min(splitErrors[:, 0])
