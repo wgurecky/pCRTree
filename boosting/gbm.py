@@ -23,7 +23,7 @@ class GBRTmodel(object):
     - huber
     - squared-error
     """
-    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', tau=0.5, **kwargs):
+    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', alpha=0.5, **kwargs):
         """!
         @param max_depth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
@@ -32,6 +32,8 @@ class GBRTmodel(object):
             boosted iteration.
         @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("se", "huber", "quantile")
+        @param alpha  (float)  target quantile value.
+            Only used for "quantile" loss, otherwise this parameter is ignored.
         """
         self.max_depth = max_depth
         self.learning_rate = learning_rate
@@ -53,8 +55,8 @@ class GBRTmodel(object):
             self._scale = True
 
         # Loss class instance
-        self._tau = tau
-        self._L = FLoss(loss, tau=self._tau)
+        self._alpha = alpha
+        self._L = FLoss(loss, tau=self._alpha)
 
     def predict(self, testX):
         """!
@@ -83,14 +85,14 @@ class GBRTmodel(object):
             self._scale = False
 
     @property
-    def tau(self):
-        return self._tau
+    def alpha(self):
+        return self._alpha
 
-    @tau.setter
-    def tau(self, tau):
-        assert(tau <= 1.)
-        assert(tau >= 0.)
-        self._L.tau = tau
+    @alpha.setter
+    def alpha(self, alpha):
+        assert(alpha <= 1.)
+        assert(alpha >= 0.)
+        self._L.tau = alpha
 
     @property
     def F(self):

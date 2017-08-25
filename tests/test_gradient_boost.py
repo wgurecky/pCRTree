@@ -100,17 +100,17 @@ class TestGradBoosting(unittest.TestCase):
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(max_depth=1, learning_rate=0.2, subsample=0.9, loss="quantile", tau=0.5)
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.2, subsample=0.9, loss="quantile", alpha=0.5)
         gbt.train(X, y, n_estimators=350)
         y_median = gbt.predict(xx)
 
         # lower
-        gbt.tau = 0.1
+        gbt.alpha = 0.1
         gbt.train(X, y, n_estimators=350)
         y_lower = gbt.predict(xx)
 
         # upper
-        gbt.tau = 0.9
+        gbt.alpha = 0.9
         gbt.train(X, y, n_estimators=350)
         y_upper = gbt.predict(xx)
 
