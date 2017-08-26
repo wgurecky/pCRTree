@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 from boosting.gbm import GBRTmodel
 from scipy.interpolate import griddata
-from pylab import cm
 import unittest
 import os
 import numpy as np
 MPL = False
 try:
+    from pylab import cm
     import matplotlib.pyplot as plt
     MPL = True
 except: pass

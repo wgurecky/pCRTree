@@ -6,5 +6,5 @@ setup(
     author = 'William Gurecky',
     author_email = 'william.gurecky@utexas.edu',
     license = 'BSD-3',
-    install_requires=['numpy>=1.8.0', 'scipy', 'numba', 'matplotlib', 'sklearn'],
+    install_requires=['numpy>=1.8.0', 'scipy', 'numba', 'matplotlib', 'scikit-learn'],
 )

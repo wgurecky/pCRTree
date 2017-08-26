@@ -4,9 +4,9 @@ from scipy.interpolate import griddata
 import unittest
 import os
 import numpy as np
-from pylab import cm
 MPL = False
 try:
+    from pylab import cm
     import matplotlib.pyplot as plt
     MPL = True
 except: pass
