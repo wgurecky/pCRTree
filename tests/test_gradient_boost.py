@@ -7,6 +7,14 @@ import matplotlib.pyplot as plt
 import unittest
 import os
 import numpy as np
+#
+SK_LEARN = False
+try:
+    from sklearn.ensemble import GradientBoostingRegressor as SkGbt
+    SK_LEARN = True
+except:
+    pass
+#
 pwd_ = os.path.dirname(os.path.abspath(__file__))
 dataDir = pwd_ + "/data/"
 np.random.seed(123)
@@ -51,7 +59,7 @@ class TestGradBoosting(unittest.TestCase):
 
     def test1dBoostedReg(self):
         # In this case, use tree stumps for weak learners
-        iters = 500
+        iters = 300
         gbt = GBRTmodel(max_depth=1, learning_rate=0.3, subsample=0.6, loss="se")
         status = gbt.train(self.xTrain, self.yTrain, n_estimators=iters, xTest=self.xTest, yTest=self.yTest)
 
@@ -116,6 +124,9 @@ class TestGradBoosting(unittest.TestCase):
         gbt.train(X, y, n_estimators=350)
         y_upper = gbt.predict(xx)
 
+        # check avg vals of percentile prediction bands
+        self.assertTrue((np.mean(y_lower) < np.mean(y_median) < np.mean(y_upper)))
+
         # Plot the function, the prediction and the 90% confidence interval based on
         # the MSE
         fig = plt.figure()
@@ -172,6 +183,9 @@ class TestGradBoosting(unittest.TestCase):
         gbt.train(X, y, n_estimators=350)
         y_upper = gbt.predict(xx)
 
+        # check avg vals of percentile prediction bands
+        self.assertTrue((np.mean(y_lower) < np.mean(y_median) < np.mean(y_upper)))
+
         # Plot the function, the prediction and the 90% confidence interval based on
         # the MSE
         fig = plt.figure()
@@ -192,7 +206,7 @@ class TestGradBoosting(unittest.TestCase):
 
 
     def test2dBoostedReg(self):
-        iters = 40
+        iters = 100
         gbt = GBRTmodel(max_depth=3, learning_rate=0.2, subsample=0.5)
 
         # generate testing input
@@ -205,9 +219,26 @@ class TestGradBoosting(unittest.TestCase):
         gbt.train(self.x, self.y, n_estimators=iters)
         zHat = gbt.predict(xTest)
 
+        # Compare to sklearn
+        if SK_LEARN:
+            sk_gbt = SkGbt(max_depth=3, loss='ls', subsample=0.5, learning_rate=0.2, n_estimators=200)
+            sk_gbt.fit(self.x, self.y)
+            sk_zHat = sk_gbt.predict(xTest)
+            # check mean diff for drift
+            self.assertTrue((np.mean(sk_zHat - zHat) < 0.01))
+            # check mean squared error
+            mse = ((sk_zHat - zHat) ** 2.0).mean()
+            self.assertTrue((mse < 0.02))
+            self.assertTrue((np.abs((np.max(self.y) - np.max(sk_zHat))) / np.mean(self.y) < 0.05))
+            self.assertTrue((np.abs((np.min(self.y) - np.min(sk_zHat))) / np.mean(self.y) < 0.05))
+
         # print importances
         print("Feature Importances")
         print(gbt.feature_importances_)
+
+        # check min and max predictions
+        self.assertTrue((np.abs((np.max(self.y) - np.max(zHat))) / np.mean(self.y) < 0.05))
+        self.assertTrue((np.abs((np.min(self.y) - np.min(zHat))) / np.mean(self.y) < 0.05))
 
         # plot
         x1grid = np.linspace(xTest[:, 0].min(), xTest[:, 0].max(), 200)

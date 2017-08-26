@@ -69,7 +69,7 @@ class GBRTmodel(object):
         for weight, tree in zip(self._treeWeights, self._trees):
             fHat += weight * tree.predict(testX)
         if self._scale:
-            return self.trans.inverse_transform(fHat)
+            return self.trans.inverse_transform(fHat.reshape(-1, 1))[: ,0]
         else:
             return fHat
 
@@ -153,7 +153,7 @@ class GBRTmodel(object):
         # Reset model
         self.x = x
         if self._scale:
-            self.y = self.trans.fit_transform(y)  # todo make y 2D
+            self.y = self.trans.fit_transform(y.reshape(-1, 1))[:, 0]
         else:
             self.y = y
         self._trees = [ConstModel(x, y)]
@@ -214,7 +214,7 @@ class GBRTmodel(object):
         total_sum = np.zeros(np.shape(self.x)[1])
         for weight, tree in zip(self._treeWeights[1:], self._trees[1:]):
             tree_importance = tree.feature_importances_()
-            total_sum += tree_importance * weight
+            total_sum += tree_importance * 1.0
         print("*** TOTAL SUM IMPORTANCES ***")
         print(total_sum)
         importances = total_sum / np.sum(self._treeWeights)

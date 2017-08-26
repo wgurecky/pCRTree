@@ -181,7 +181,7 @@ class GBCTmodel(object):
         total_sum = np.zeros(np.shape(self.x)[1])
         for weight, tree in zip(self._treeWeights, self._trees):
             tree_importance = tree.feature_importances_()
-            total_sum += tree_importance * weight
+            total_sum += tree_importance * 1.0
         print("*** TOTAL SUM IMPORTANCES ***")
         print(total_sum)
         importances = total_sum / np.sum(self._treeWeights)

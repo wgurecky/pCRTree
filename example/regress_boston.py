@@ -7,6 +7,7 @@ from sklearn import datasets
 from boosting.gbm import GBRTmodel
 import numpy as np
 from sklearn.utils import shuffle
+import matplotlib.pyplot as plt
 
 
 def main():
@@ -18,8 +19,8 @@ def main():
     X_train, y_train = X[:offset], y[:offset]
     X_test, y_test = X[offset:], y[offset:]
     # fit model
-    iters = 150
-    gbt = GBRTmodel(max_depth=4, learning_rate=0.05, subsample=0.6)
+    iters = 500
+    gbt = GBRTmodel(max_depth=4, learning_rate=0.02, subsample=0.6)
     gbt.train(X_train, y_train, n_estimators=iters)
 
     # print importances
@@ -27,9 +28,30 @@ def main():
     feature_importance = gbt.feature_importances_
     print(feature_importance)
 
+    # sklearn predict
+    try:
+        from sklearn.ensemble import GradientBoostingRegressor as SkGbt
+        sk_gbt = SkGbt(max_depth=4, loss='ls', subsample=0.9, learning_rate=0.01, n_estimators=500)
+        sk_gbt.fit(X_train, y_train)
+        sk_feature_importance = sk_gbt.feature_importances_
+        print("Scikit-learn Feature Importances")
+        print(sk_feature_importance)
+        #
+        sorted_idx = np.argsort(sk_feature_importance)
+        pos = np.arange(sorted_idx.shape[0]) + .5
+        plt.subplot(1, 1, 1)
+        plt.barh(pos, sk_feature_importance[sorted_idx], align='center')
+        plt.yticks(pos, boston.feature_names[sorted_idx])
+        plt.xlabel('Fractional Importance')
+        plt.title('Variable Importance')
+        plt.savefig("boston_feature_imp_sklearn.png")
+        plt.close()
+    except:
+        pass
+
+    # do not require plotting to succeed
     try:
         # plot normed feature importances
-        import matplotlib.pyplot as plt
         sorted_idx = np.argsort(feature_importance)
         pos = np.arange(sorted_idx.shape[0]) + .5
         plt.subplot(1, 1, 1)
