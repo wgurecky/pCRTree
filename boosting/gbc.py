@@ -20,17 +20,17 @@ class GBCTmodel(object):
     Implemented loss functions:
     - exp (multi-class exp loss used in SAMME method)
     """
-    def __init__(self, maxTreeDepth=3, learning_rate=1.0, subsample=1.0, lossFn='exp', **kwargs):
+    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='exp', **kwargs):
         """!
-        @param maxTreeDepth  Maximum depth of each weak learner in the model.
+        @param max_depth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBCT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
             boosted iteration.
-        @param lossFn  (str) Target function to minimize at each iteration of boosting
+        @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("exp")
         """
-        self.maxTreeDepth = maxTreeDepth
+        self.max_depth = max_depth
         self.learning_rate = learning_rate
         self.subsample = subsample
 
@@ -62,21 +62,18 @@ class GBCTmodel(object):
         """!
         @brief Computes the class histogram at input testX locs
         """
-        # tree_weight * (weights * (T_i(x) == K))
-        histCols = []
-        lenX = testX.shape[0]
-        for k in np.sort(np.unique(self.y)):
-            counts = np.zeros(lenX)
-            for i, tree in enumerate(self._trees):
+        len_x = testX.shape[0]
+        unique_cls_labels = np.sort(np.unique(self.y))
+        histCols = np.zeros((len(unique_cls_labels), len_x))
+        for i, tree in enumerate(self._trees):
+            tree_predictions = tree.predict(testX)
+            for v, k in enumerate(unique_cls_labels):
                 # where did this tree correcly predict?
-                Ic = np.zeros(lenX)
-                corrMask = (k == tree.predict(testX))
-                # set diagonal to correctMask
+                Ic = np.zeros(len_x)
+                corrMask = (k == tree_predictions)
                 Ic[corrMask] = 1
-                # corrPredict[np.diag_indices_from(corrPredict)] = Ic
-                counts += self._treeWeights[i] * Ic
-            histCols.append(counts)
-        hist = np.array(histCols).T
+                histCols[v] += self._treeWeights[i] * Ic
+        hist = histCols.T
         return hist
 
     def predictClassProbs(self, testX, **kwargs):
@@ -116,12 +113,12 @@ class GBCTmodel(object):
     def trees(self):
         return self._trees
 
-    def train(self, x, y, maxIterations=5, warmStart=0, **kwargs):
+    def train(self, x, y, n_estimators=5, warmStart=0, **kwargs):
         """!
         @brief Train the classification tree model by the SAMME method.
         @param x (nd_array) Explanatory variable set.  Shape = (N_support_pts, Ndims)
         @param y (1d_array) Response class vector. Shape = (N_support_pts,)
-        @param maxIterations  Max number of boosted iterations.
+        @param n_estimators  Max number of boosted iterations.
         """
         print("Iteration | Training Err | Tree weight ")
         print("========================================")
@@ -133,12 +130,12 @@ class GBCTmodel(object):
         lenY = len(self.y)
         y_weights = np.ones(lenY) / lenY
         self._K = len(np.unique(self.y))
-        for i in range(maxIterations):
+        for i in range(n_estimators):
             # subsample training data
             sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
             # Fit classification tree to training data with current weights
             self._trees.append(ClsTree(self.x[sub_idx], self.y[sub_idx],
-                maxDepth=self.maxTreeDepth, weights=y_weights[sub_idx]))
+                maxDepth=self.max_depth, weights=y_weights[sub_idx]))
             # y_weights = self._trees[i].weights
             self._trees[i].fitTree()
             #
@@ -180,11 +177,11 @@ class GBCTmodel(object):
         return np.sum(corrMask) / len(y)
 
     @property
-    def feature_importances(self, normed=True):
+    def feature_importances_(self, normed=True):
         total_sum = np.zeros(np.shape(self.x)[1])
         for weight, tree in zip(self._treeWeights, self._trees):
             tree_importance = tree.feature_importances_()
-            total_sum += tree_importance * weight
+            total_sum += tree_importance * 1.0
         print("*** TOTAL SUM IMPORTANCES ***")
         print(total_sum)
         importances = total_sum / np.sum(self._treeWeights)

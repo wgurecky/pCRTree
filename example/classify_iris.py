@@ -21,8 +21,8 @@ def main():
     # explanatory vars
     x = iris[:, 0:-1]
     # fit boosted classification tree to data
-    iris_gbt = GBCTmodel(maxTreeDepth=2, learning_rate=0.2, subsample=0.6)
-    iris_gbt.train(x[:, 0:2], y, maxIterations=50)
+    iris_gbt = GBCTmodel(max_depth=2, learning_rate=0.2, subsample=0.6)
+    iris_gbt.train(x[:, 0:2], y, n_estimators=50)
 
     # predict
     y_hat = iris_gbt.predict(x[:, 0:2])
@@ -45,7 +45,7 @@ def main():
     # Z = Zpb[:,0]
 
     # feature importance
-    feature_imp = iris_gbt.feature_importances
+    feature_imp = iris_gbt.feature_importances_
     print("Feature Importances:")
     print(feature_imp)
     # expected feature importances
@@ -82,11 +82,11 @@ def test_importances():
     # explanatory vars
     x = iris[:, 0:-1]
     # fit boosted classification tree to data
-    iris_gbt = GBCTmodel(maxTreeDepth=3, learning_rate=0.2, subsample=0.7)
-    iris_gbt.train(x, y, maxIterations=101)
+    iris_gbt = GBCTmodel(max_depth=3, learning_rate=0.2, subsample=0.7)
+    iris_gbt.train(x, y, n_estimators=101)
 
     # feature importance
-    feature_imp = iris_gbt.feature_importances
+    feature_imp = iris_gbt.feature_importances_
     print("Feature Importances:")
     print("sepal_len, sepal_width, petal_len, petal_width")
     print(feature_imp)

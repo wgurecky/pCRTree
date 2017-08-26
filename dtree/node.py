@@ -5,6 +5,7 @@
 # @date Feb 3 2017
 ##
 import numpy as np
+from numba import jit
 
 
 class BiNode(object):
@@ -44,6 +45,10 @@ class BiNode(object):
 
     @property
     def spl(self):
+        """!
+        @brief Split location (float or int)
+        Location on split axis, see: self.spd
+        """
         return self._spl
 
     @spl.setter
@@ -52,6 +57,9 @@ class BiNode(object):
 
     @property
     def spd(self):
+        """!
+        @brief Split dimension (aka split axis)
+        """
         return self._spd
 
     @spd.setter
@@ -82,26 +90,66 @@ class BiNode(object):
     def split_gain(self, gain):
         self._split_gain = gain
 
+    def predict(self, testX):
+        """!
+        @brief Given some testing input return regression tree predictions.
+        Traverses the tree recursively and provides leaf node predictions.
+        @param testX nd_array of ints or floats.  Test explanatory input array
+        @return 1d_array y_hat (len=len(testX)) prediction array
+        """
+        if len(np.shape(testX)) == 1:
+            testX = np.array([testX]).T
+        if testX.shape[1] != self.ndim:
+            print("ERROR: dimension mismatch.")
+            raise RuntimeError
+        oIdx = np.arange(len(testX))
+        xHat, yHat, xIdx = self.bNodePredict(testX, np.arange(len(testX)))
+        if not np.array_equal(testX[xIdx], xHat):
+            print("WARNING: Shifted output order!")
+        shift = np.lexsort((oIdx, xIdx))
+        return yHat[shift]
+
+    def bNodePredict(self, testX, testXIdx):
+        """!
+        @brief Recursively evaluate internal node splits and leaf predictions.
+        @return (xOut, yOut, xIdx_Out)
+            indicies of original X vector and corrosponding resopnse Y
+        """
+        if self._nodes != (None, None):
+            leftX, lIdX, rightX, rIdX = maskDataJit(self._spl, self._spd, testX, testXIdx)
+            lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
+            rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
+            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
+        else:
+            # is leaf node
+            xHat = testX
+            yHat = self._yhat * np.ones(len(testX))
+            return xHat, yHat, testXIdx
+
+
     def feature_importances_(self, **kwargs):
         """!
         @brief Recursively traverses tree and tallies split axis
         and split "benifit".
         @return  np_1darray of feature importances in this CART tree.
         """
+        verbose = kwargs.pop("verbose", 0)
         tree_gain = kwargs.get("imp_arr", np.zeros(self.x.shape[1]))
         assert(len(tree_gain) == self.x.shape[1])
         if self._nodes != (None, None):
-            # Note the gain we achived when splitting and along what dimension we split
+            # Note the gain we achived when splitting
+            # and along what dimension we split
             node_gain = np.zeros(self.x.shape[1])
             node_gain[int(self._spd)] = self._split_gain
-            # node_gain[int(self._spd)] = 1.0
             # Add split gain to tree gain
             tree_gain += node_gain
             #
             tree_gain = self._nodes[0].feature_importances_(imp_arr=tree_gain)
             tree_gain = self._nodes[1].feature_importances_(imp_arr=tree_gain)
-            # print("--------")
-            # print("node gains: " + str(node_gain) + " lvl: " + str(self.level))
+            if verbose:
+                print("----------")
+                print("node gains: " + \
+                      str(node_gain) + " lvl: " + str(self.level))
             return tree_gain
         else:
             # leaf node has no splits
@@ -146,7 +194,7 @@ class BiNode(object):
         for d in range(np.shape(self.x)[1]):
             for spl in testSplits[d]:
                 leftExpl, leftData, rightExpl, rightData = \
-                    self._maskData(spl, d, self.x, self.y)
+                    maskDataJit(spl, d, self.x, self.y)
                 yield ([leftExpl, leftData], [rightExpl, rightData], d, spl)
 
     def _maskData(self, spl, d, x, y=None):
@@ -159,7 +207,8 @@ class BiNode(object):
         @param y  Response vars 1d_array
         """
         leftMask = (x[:, int(d)] < spl)
-        rightMask = (x[:, int(d)] >= spl)
+        # rightMask = (x[:, int(d)] >= spl)
+        rightMask = np.invert(leftMask)
         leftExpl = x[leftMask]
         rightExpl = x[rightMask]
         if y is not None:
@@ -173,54 +222,8 @@ class BiNode(object):
     def evalSplits(self, split_crit="best", gain_measure="se"):
         """!
         @brief evaluate loss function in each split region
-        @param split_crit str in ("best", "var"):
-            Splits on sum sqr err or varience reduction criteria respectively.
-        @param gain_measure  Measure by which split gain is computed
-            "se": squared error
-            "var": varience improvement
-        @return list [totError, valLeft, valRight, split_dimension, split_loc]
         """
-        splitErrors = []
-        nodeErr = self._regionFit(self.x, self.y)[0]
-        for split in self.iterSplitData():
-            eL, vL = self._regionFit(split[0][0], split[0][1])
-            eR, vR = self._regionFit(split[1][0], split[1][1])
-            eTot = eL + eR
-            if gain_measure == "se":
-                gain = eTot
-            else:
-                # reduction in varience from split
-                n = len(self.y)
-                n_l = len(split[0][1])
-                n_r = len(split[1][1])
-                node_var = (1. / n) * 0.5 * nodeErr
-                split_var = (1. / n_l) * 0.5 * eL + \
-                            (1. / n_r) * 0.5 * eR
-                gain = node_var - split_var
-            splitErrors.append([eTot, vL, vR, split[2], split[3], gain])
-        splitErrors = np.array(splitErrors)
-        if split_crit is "best":
-            # split on sum squared err
-            best_gain = np.min(splitErrors[:, 0])
-            tie_mask = (splitErrors[:, 0] == best_gain)
-            n_ties = np.count_nonzero(tie_mask)
-            if n_ties >= 2:
-                candidateIdxs = np.nonzero(tie_mask)[0]
-                bestSplitIdx = np.random.choice(candidateIdxs)
-            else:
-                bestSplitIdx = np.argmin(splitErrors[:, 0])
-        else:
-            # split on gain
-            best_gain = np.max(splitErrors[:, 5])
-            tie_mask = (splitErrors[:, 5] == best_gain)
-            n_ties = np.count_nonzero(tie_mask)
-            if n_ties >= 2:
-                candidateIdxs = np.nonzero(tie_mask)[0]
-                bestSplitIdx = np.random.choice(candidateIdxs)
-            else:
-                bestSplitIdx = np.argmax(splitErrors[:, 5])
-        # select the best possible split
-        return splitErrors[bestSplitIdx]
+        raise NotImplementedError
 
     def fitTree(self):
         """!
@@ -245,3 +248,23 @@ class BiNode(object):
         @return (err, bestFunctionValue)
         """
         raise NotImplementedError
+
+
+# ============================NUMBA FUNCTIONS================================ #
+@jit(nopython=True)
+def maskDataJit(spl, d, x, y):
+    """!
+    @brief Given split location and dimension along which to split,
+    partition the data into left and right datasets.
+    @param spl  Split location (int or float)
+    @param d    Split dimension (int)
+    @param x  Explanatory variables nd_array
+    @param y  Response vars 1d_array
+    """
+    leftMask = (x[:, int(d)] < spl)
+    rightMask = np.invert(leftMask)
+    leftExpl = x[leftMask]
+    rightExpl = x[rightMask]
+    leftData = y[leftMask]
+    rightData = y[rightMask]
+    return leftExpl, leftData, rightExpl, rightData

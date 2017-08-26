@@ -5,7 +5,8 @@
 ##
 from __future__ import division
 import numpy as np
-from dtree.node import BiNode
+from numba import jit
+from dtree.node import BiNode, maskDataJit
 
 
 class RegTree(BiNode):
@@ -24,51 +25,12 @@ class RegTree(BiNode):
         """
         super(RegTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
 
-    def predict(self, testX):
-        """!
-        @brief Given some testing input return regression tree predictions.
-        Traverses the tree recursively and provides leaf node predictions.
-        @param testX nd_array of ints or floats.  Test explanatory input array
-        @return 1d_array y_hat (len=len(testX)) prediction array
-        """
-        if len(np.shape(testX)) == 1:
-            testX = np.array([testX]).T
-        if testX.shape[1] != self.ndim:
-            print("ERROR: dimension mismatch.")
-            raise RuntimeError
-        # xHat, yHat = self.nodePredict(testX)
-        oIdx = np.arange(len(testX))
-        xHat, yHat, xIdx = self.bNodePredict(testX, np.arange(len(testX)))
-        if not np.array_equal(testX[xIdx], xHat):
-            print("WARNING: Shifted output order!")
-        shift = np.lexsort((oIdx, xIdx))
-        return yHat[shift]
-
-    def bNodePredict(self, testX, testXIdx):
-        """!
-        @brief Recursively evaluate internal node splits and leaf predictions.
-        @return (xOut, yOut, xIdx_Out)
-            indicies of original X vector and corrosponding resopnse Y
-        """
-        if self._nodes != (None, None):
-            leftX, lIdX, rightX, rIdX = self._maskData(self._spl, self._spd, testX, testXIdx)
-            lxh, lyh, lIdx = self._nodes[0].bNodePredict(leftX, lIdX)
-            rxh, ryh, rIdx = self._nodes[1].bNodePredict(rightX, rIdX)
-            return np.vstack((lxh, rxh)), np.hstack((lyh, ryh)), np.hstack((lIdx, rIdx))
-        else:
-            # is leaf node
-            xHat = testX
-            yHat = self._yhat * np.ones(len(testX))
-            return xHat, yHat, testXIdx
-
     def _regionFit(self, region_x, region_y, lossFn="squared"):
         """!
-        @brief Evaulate region loss fuction:
-            - squared errors
+        @brief Evaulate region squared error loss fuction
         @return (loss, regionYhat)
         """
         yhat = np.mean(region_y)
-        # residual sum squared error
         rsse = np.sum((region_y - yhat) ** 2)
         return rsse, yhat
 
@@ -91,10 +53,12 @@ class RegTree(BiNode):
             return 0
         else:
             bs = self.evalSplits()
+            if bs is None:
+                return 0
             lYhat = bs[1]
             rYhat = bs[2]
             d, spl = bs[3], bs[4]
-            splitData = self._maskData(spl, d, self.x, self.y)
+            splitData = maskDataJit(spl, d, self.x, self.y)
 
             # store split location and split dimension on current node
             self._spl = spl
@@ -107,3 +71,77 @@ class RegTree(BiNode):
             self._nodes = (leftNode, rightNode)
             if cleanUp: self.delData()
             return 1
+
+    def evalSplits(self, split_crit="best", gain_measure="se"):
+        """!
+        @brief evaluate loss function in each split region
+        @param split_crit str in ("best", "var"):
+            Splits on sum sqr err or varience reduction criteria respectively.
+        @param gain_measure  Measure by which split gain is computed
+            "se": squared error
+            "var": varience improvement
+        @return list [totError, valLeft, valRight, split_dimension, split_loc]
+        """
+        nodeErr = regionFitJit(self.x, self.y)[0]
+        # Internal Split Eval
+        splitErrors = np.array([self.internalEvalSplit(slt, nodeErr, gain_measure) \
+                                for slt in self.iterSplitData()])
+        if splitErrors.size == 0:
+            return None
+        if split_crit is "best":
+            # split on sum squared err
+            best_gain = np.min(splitErrors[:, 0])
+            tie_mask = (splitErrors[:, 0] == best_gain)
+            n_ties = np.count_nonzero(tie_mask)
+            if n_ties >= 2:
+                candidateIdxs = np.nonzero(tie_mask)[0]
+                bestSplitIdx = np.random.choice(candidateIdxs)
+            else:
+                bestSplitIdx = np.argmin(splitErrors[:, 0])
+        else:
+            # split on gain
+            best_gain = np.max(splitErrors[:, 5])
+            tie_mask = (splitErrors[:, 5] == best_gain)
+            n_ties = np.count_nonzero(tie_mask)
+            if n_ties >= 2:
+                candidateIdxs = np.nonzero(tie_mask)[0]
+                bestSplitIdx = np.random.choice(candidateIdxs)
+            else:
+                bestSplitIdx = np.argmax(splitErrors[:, 5])
+        # select the best possible split
+        return splitErrors[bestSplitIdx]
+
+    @staticmethod
+    def internalEvalSplit(split, node_err, gain_measure):
+        eL, vL = regionFitJit(split[0][0], split[0][1])
+        eR, vR = regionFitJit(split[1][0], split[1][1])
+        eTot = eL + eR
+        if gain_measure == "se":
+            gain = eTot
+        else:
+            # reduction in varience from split
+            n = len(self.y)
+            n_l = len(split[0][1])
+            n_r = len(split[1][1])
+            node_var = (1. / n) * 0.5 * node_err
+            split_var = (1. / n_l) * 0.5 * eL + \
+                        (1. / n_r) * 0.5 * eR
+            gain = node_var - split_var
+        return [eTot, vL, vR, split[2], split[3], gain]
+
+
+# ============================NUMBA FUNCTIONS================================ #
+@jit(nopython=True)
+def regionFitJit(region_x, region_y):
+    """!
+    @brief Evaulate region loss fuction
+    (Squared errors).  Return residual sum squared
+    errors and the region prediction (mean).
+    @param region_x np_ndarray predictors in this region
+    @param region_y np_1darray responses in this region
+    @return (loss, regionYhat)
+    """
+    yhat = np.mean(region_y)
+    rsse = np.sum((region_y - yhat) ** 2)
+    return rsse, yhat
+

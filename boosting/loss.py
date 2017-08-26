@@ -74,7 +74,7 @@ class AbstractLoss:
 # =========================================================================== #
 class SquaredLoss(AbstractLoss):
     """!
-    @brief squared error loss function concrete class.
+    @brief Squared error loss function concrete class.
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "se")
@@ -90,7 +90,8 @@ class SquaredLoss(AbstractLoss):
 
 class HuberLoss(AbstractLoss):
     """!
-    @brief Absolute error loss function concrete class.
+    @brief Huber loss function.
+    see: arxiv.org/pdf/1402.4624.pdf
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "huber")
@@ -108,8 +109,8 @@ class HuberLoss(AbstractLoss):
 
 class QuantileLoss(AbstractLoss):
     """!
-    @brief Huber quantile function.
-    see: arxiv.org/pdf/1402.4624.pdf
+    @brief Absolute error loss function concrete class.
+    Quantile loss
     """
     def __init__(self, *args, **kwargs):
         self.name = kwargs.pop("name", "quantile")
@@ -133,6 +134,23 @@ class QuantileLoss(AbstractLoss):
         u[x >= 0] = 1.
         # return self.tau - l
         return self.tau * u + (self.tau - 1.) * l
+
+
+class SAMMELoss(AbstractLoss):
+    """!
+    @brief Based on notes from:
+    web.stanford.edu/~hastie/Papers/samme.pdf
+    classes.soe.ucsc.edu/cmps242/Fall09/proj/Mario_Rodriguez_Multiclass_Boosting_talk.pdf
+    Used for multiclass classification in place of
+    traditional adaboost.m1 two class model
+    """
+    def __init__(self, n_class_labels, *args, **kwargs):
+        self.name = kwargs.pop("name", "samme")
+        self.k = n_class_labels
+        super(AbstractLoss, self).__init__()
+
+    def loss(self, y, yhat):
+        return np.exp(-(1. / self.k) * y.T * yhat)
 
 
 # =========================================================================== #
