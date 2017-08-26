@@ -18,7 +18,7 @@ def main():
     X_train, y_train = X[:offset], y[:offset]
     X_test, y_test = X[offset:], y[offset:]
     # fit model
-    iters = 50
+    iters = 150
     gbt = GBRTmodel(max_depth=4, learning_rate=0.05, subsample=0.6)
     gbt.train(X_train, y_train, n_estimators=iters)
 
