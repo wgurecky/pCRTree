@@ -2,18 +2,19 @@
 from boosting.gbm import GBRTmodel
 from scipy.interpolate import griddata
 from pylab import cm
-import matplotlib.pyplot as plt
-# import seaborn as sns
 import unittest
 import os
 import numpy as np
-#
+MPL = False
+try:
+    import matplotlib.pyplot as plt
+    MPL = True
+except: pass
 SK_LEARN = False
 try:
     from sklearn.ensemble import GradientBoostingRegressor as SkGbt
     SK_LEARN = True
-except:
-    pass
+except: pass
 #
 pwd_ = os.path.dirname(os.path.abspath(__file__))
 dataDir = pwd_ + "/data/"
@@ -67,25 +68,26 @@ class TestGradBoosting(unittest.TestCase):
         xTest = np.linspace(0, 10, 400)
         yhat = gbt.predict(xTest)
 
-        # plot training and testing errors
-        plt.figure(2)
-        plt.plot(status[:, 0][10:], status[:, 1][10:], label="Train Error")
-        plt.plot(status[:, 0][10:], status[:, 2][10:], label="Test Error")
-        plt.ylim(0, 2.)
-        plt.legend(loc=0)
-        plt.xlabel("Boosted Iteration")
-        plt.ylabel("MSE")
-        plt.savefig('1d_boosted_regression_err.png')
-        plt.close()
+        if MPL:
+            # plot training and testing errors
+            plt.figure(2)
+            plt.plot(status[:, 0][10:], status[:, 1][10:], label="Train Error")
+            plt.plot(status[:, 0][10:], status[:, 2][10:], label="Test Error")
+            plt.ylim(0, 2.)
+            plt.legend(loc=0)
+            plt.xlabel("Boosted Iteration")
+            plt.ylabel("MSE")
+            plt.savefig('1d_boosted_regression_err.png')
+            plt.close()
 
-        # plot result
-        plt.figure(2)
-        plt.plot(self.xTrain, self.yTrain, marker='.', linestyle="None", label="Train Data")
-        plt.plot(self.xTest, self.yTest, marker='.', linestyle="None", label="Test Data")
-        plt.plot(xTest, yhat, label="Iter=" + str(iters))
-        plt.legend(loc=0)
-        plt.savefig('1d_boosted_regression_ex.png')
-        plt.close()
+            # plot result
+            plt.figure(2)
+            plt.plot(self.xTrain, self.yTrain, marker='.', linestyle="None", label="Train Data")
+            plt.plot(self.xTest, self.yTest, marker='.', linestyle="None", label="Test Data")
+            plt.plot(xTest, yhat, label="Iter=" + str(iters))
+            plt.legend(loc=0)
+            plt.savefig('1d_boosted_regression_ex.png')
+            plt.close()
 
     def testQuantileReg(self):
         """
@@ -127,23 +129,24 @@ class TestGradBoosting(unittest.TestCase):
         # check avg vals of percentile prediction bands
         self.assertTrue((np.mean(y_lower) < np.mean(y_median) < np.mean(y_upper)))
 
-        # Plot the function, the prediction and the 90% confidence interval based on
-        # the MSE
-        fig = plt.figure()
-        plt.plot(xx, f(xx), 'g:', label=u'$f(x) = x\,\sin(x)$')
-        plt.plot(X, y, 'b.', markersize=2, label=u'Observations')
-        plt.plot(xx, y_median, 'r-', label=u'Prediction')
-        plt.plot(xx, y_upper, 'k-')
-        plt.plot(xx, y_lower, 'k-')
-        plt.fill(np.concatenate([xx, xx[::-1]]),
-                 np.concatenate([y_upper, y_lower[::-1]]),
-                 alpha=.5, fc='b', ec='None', label='90% prediction interval')
-        plt.xlabel('$x$')
-        plt.ylabel('$f(x)$')
-        plt.ylim(-10, 20)
-        plt.legend(loc='upper left')
-        plt.savefig('1d_boosted_regression_quantile_ex.png')
-        plt.close()
+        if MPL:
+            # Plot the function, the prediction and the 90% confidence interval based on
+            # the MSE
+            fig = plt.figure()
+            plt.plot(xx, f(xx), 'g:', label=u'$f(x) = x\,\sin(x)$')
+            plt.plot(X, y, 'b.', markersize=2, label=u'Observations')
+            plt.plot(xx, y_median, 'r-', label=u'Prediction')
+            plt.plot(xx, y_upper, 'k-')
+            plt.plot(xx, y_lower, 'k-')
+            plt.fill(np.concatenate([xx, xx[::-1]]),
+                     np.concatenate([y_upper, y_lower[::-1]]),
+                     alpha=.5, fc='b', ec='None', label='90% prediction interval')
+            plt.xlabel('$x$')
+            plt.ylabel('$f(x)$')
+            plt.ylim(-10, 20)
+            plt.legend(loc='upper left')
+            plt.savefig('1d_boosted_regression_quantile_ex.png')
+            plt.close()
 
     def testQuantileReg2(self):
         """
@@ -186,23 +189,24 @@ class TestGradBoosting(unittest.TestCase):
         # check avg vals of percentile prediction bands
         self.assertTrue((np.mean(y_lower) < np.mean(y_median) < np.mean(y_upper)))
 
-        # Plot the function, the prediction and the 90% confidence interval based on
-        # the MSE
-        fig = plt.figure()
-        plt.plot(xx, f(xx), 'g:', label=u'$f(x) = x\,\sin(x)$')
-        plt.plot(X, y, 'b.', markersize=2, label=u'Observations')
-        plt.plot(xx, y_median, 'r-', label=u'Prediction')
-        plt.plot(xx, y_upper, 'k-')
-        plt.plot(xx, y_lower, 'k-')
-        plt.fill(np.concatenate([xx, xx[::-1]]),
-                 np.concatenate([y_upper, y_lower[::-1]]),
-                 alpha=.5, fc='b', ec='None', label='90% prediction interval')
-        plt.xlabel('$x$')
-        plt.ylabel('$f(x)$')
-        plt.ylim(-10, 20)
-        plt.legend(loc='upper left')
-        plt.savefig('1d_boosted_regression_quantile_ex2.png')
-        plt.close()
+        if MPL:
+            # Plot the function, the prediction and the 90% confidence interval based on
+            # the MSE
+            fig = plt.figure()
+            plt.plot(xx, f(xx), 'g:', label=u'$f(x) = x\,\sin(x)$')
+            plt.plot(X, y, 'b.', markersize=2, label=u'Observations')
+            plt.plot(xx, y_median, 'r-', label=u'Prediction')
+            plt.plot(xx, y_upper, 'k-')
+            plt.plot(xx, y_lower, 'k-')
+            plt.fill(np.concatenate([xx, xx[::-1]]),
+                     np.concatenate([y_upper, y_lower[::-1]]),
+                     alpha=.5, fc='b', ec='None', label='90% prediction interval')
+            plt.xlabel('$x$')
+            plt.ylabel('$f(x)$')
+            plt.ylim(-10, 20)
+            plt.legend(loc='upper left')
+            plt.savefig('1d_boosted_regression_quantile_ex2.png')
+            plt.close()
 
 
     def test2dBoostedReg(self):
@@ -245,11 +249,12 @@ class TestGradBoosting(unittest.TestCase):
         x2grid = np.linspace(xTest[:, 1].min(), xTest[:, 1].max(), 200)
         x1grid, x2grid = np.meshgrid(x1grid, x2grid)
         zgrid = griddata((xTest[:, 0], xTest[:, 1]), values=zHat, xi=(x1grid, x2grid), method='nearest')
-        plt.figure(3)
-        plt.pcolor(x1grid / (np.pi * 2), x2grid / (np.pi * 2), zgrid, cmap=cm.RdBu, vmin=abs(zgrid).min(), vmax=abs(zgrid).max())
-        plt.colorbar()
-        plt.savefig('2d_boosted_regression_ex.png')
-        plt.close()
+        if MPL:
+            plt.figure(3)
+            plt.pcolor(x1grid / (np.pi * 2), x2grid / (np.pi * 2), zgrid, cmap=cm.RdBu, vmin=abs(zgrid).min(), vmax=abs(zgrid).max())
+            plt.colorbar()
+            plt.savefig('2d_boosted_regression_ex.png')
+            plt.close()
 
 
 def flux_qbit_pot(phi_m, phi_p):

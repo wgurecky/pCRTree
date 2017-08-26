@@ -4,8 +4,12 @@ from scipy.interpolate import griddata
 import unittest
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 from pylab import cm
+MPL = False
+try:
+    import matplotlib.pyplot as plt
+    MPL = True
+except: pass
 pwd_ = os.path.dirname(os.path.abspath(__file__))
 dataDir = pwd_ + "/data/"
 np.random.seed(123)
@@ -25,14 +29,12 @@ class Test2dRegression(unittest.TestCase):
         self.y = Z.flatten()
 
         # plot training data
-        try:
+        if MPL:
             plt.figure(0)
             plt.pcolor(X1 / (np.pi * 2), X2 / (np.pi * 2), Z, cmap=cm.RdBu, vmin=abs(Z).min(), vmax=abs(Z).max())
             plt.colorbar()
             plt.savefig('train_2d_regress.png')
             plt.close()
-        except:
-            pass
 
     def testRegression(self):
         """!
@@ -58,14 +60,12 @@ class Test2dRegression(unittest.TestCase):
         x2grid = np.linspace(xTest[:, 1].min(), xTest[:, 1].max(), 200)
         x1grid, x2grid = np.meshgrid(x1grid, x2grid)
         zgrid = griddata((xTest[:, 0], xTest[:, 1]), values=zHat, xi=(x1grid, x2grid), method='nearest')
-        try:
+        if MPL:
             plt.figure(1)
             plt.pcolor(x1grid / (np.pi * 2), x2grid / (np.pi * 2), zgrid,
                        cmap=cm.RdBu, vmin=abs(zgrid).min(), vmax=abs(zgrid).max())
             plt.colorbar()
             plt.savefig('test_2d_tree_regress.png')
-        except:
-            pass
 
 
 def flux_qbit_pot(phi_m, phi_p):

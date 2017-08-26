@@ -15,7 +15,12 @@ Install
 Depends:
 
 - numpy
-- scikit-learn
+- scipy
+- numba
+- sklearn
+
+Optional:
+
 - matplotlib
 
 For developers:
