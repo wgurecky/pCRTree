@@ -5,5 +5,5 @@ python:
 install:
     - pip install coveralls pytest-cov
     - pip install -r requirements.txt
-script: pytest --cov dtree boosting
+script: pytest --cov-config .coveragerc --cov=.
 after_success: coveralls
