@@ -5,5 +5,5 @@ python:
 install:
     - pip install coveralls pytest-cov
     - pip install -r requirements.txt
-script: pytest --cov-report= --cov=pCRTree
+script: pytest --cov-report=
 after_success: coveralls
