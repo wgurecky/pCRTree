@@ -91,6 +91,12 @@ class GBCTmodel(object):
             classProbs.append(probC_K / sumC_K)
         return np.array(classProbs).T
 
+    def predict_proba(self, testX, **kwargs):
+        """
+        @brief Alias of self.predictClassProbs
+        """
+        return self.predictClassProbs(testX, **kwargs)
+
     @property
     def F(self):
         """!
