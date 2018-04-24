@@ -136,6 +136,48 @@ class QuantileLoss(AbstractLoss):
         return self.tau * u + (self.tau - 1.) * l
 
 
+class SmthQuantileLoss(AbstractLoss):
+    """!
+    @brief Smoothed quanilte loss from:
+    <https://www.bigdatarepublic.nl/regression-prediction-intervals-with-xgboost/>
+    """
+    def __init__(self, *args, **kwargs):
+        self.name = kwargs.pop("name", "smth_quantile")
+        self.tau = kwargs.get("tau", 0.5)  # in [0, 1]
+        self.delta = kwargs.get("delta", 1.0)  # width of std quantile loss fn interval
+        self.s = kwargs.get("s", 6.0)  # abs(grad(Loss())) beyond std interval
+        self.var_s = kwargs.get("var_s", 3.0)  # variance of random number select
+        super(AbstractLoss, self).__init__()
+
+    def loss(self, y, yhat):
+        x = (y - yhat)
+        l = np.zeros(np.shape(x))
+        u = np.zeros(np.shape(x))
+        l[x < 0] = 1.
+        u[x >= 0] = 1.
+        return self.tau * x * u + (self.tau - 1.) * x * l
+
+    def gradLoss(self, y, yhat):
+        x = (y - yhat)
+        l = np.zeros(np.shape(x))
+        u = np.zeros(np.shape(x))
+        l[x < 0] = 1.
+        u[x >= 0] = 1.
+        _alpha = self.tau
+        _delta = self.delta
+        _threshold = self.s
+        _var = self.var_s
+        #
+        grad = (x<(_alpha-1.0)*_delta)*(1.0-_alpha)- ((x>=(_alpha-1.0)*_delta)& \
+                        (x<_alpha*_delta) )*x/_delta-_alpha*(x>_alpha*_delta)
+        _len = np.array([y]).size
+        var = (2*np.random.randint(2, size=_len)-1.0)*_var
+        grad = (np.abs(x)<_threshold )*grad - (np.abs(x)>=_threshold )*var
+        # hess = ((x>=(_alpha-1.0)*_delta)& (x<_alpha*_delta) )/_delta
+        # hess = (np.abs(x)<_threshold )*hess + (np.abs(x)>=_threshold )
+        return grad
+
+
 class SAMMELoss(AbstractLoss):
     """!
     @brief Based on notes from:
@@ -169,6 +211,8 @@ class FLoss(object):
             return SquaredLoss(name=name, **kwargs)
         if re.match("huber", name):
             return HuberLoss(name=name, **kwargs)
+        if re.match("smth_quantile", name):
+            return SmthQuantileLoss(name=name, **kwargs)
         if re.match("quantile", name):
             return QuantileLoss(name=name, **kwargs)
         else:

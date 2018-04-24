@@ -208,6 +208,64 @@ class TestGradBoosting(unittest.TestCase):
             plt.savefig('1d_boosted_regression_quantile_ex2.png')
             plt.close()
 
+    def testSmoothQuantileReg(self):
+        """
+        @brief test ability to estimate conf intervals by the quantile loss function
+        """
+        np.random.seed(1)
+        def f(x):
+            return x * np.sin(x)
+
+        X = np.atleast_2d(np.random.uniform(0, 10.0, size=100)).T
+        X = X.astype(np.float32)
+        y = f(X).ravel()
+
+        dy = 1.5 + 1.0 * np.random.random(y.shape)
+        noise = np.random.normal(0, dy)
+        y += noise
+        y = y.astype(np.float32)
+
+        # Mesh the input space for evaluations of the real function, the prediction and
+        # its MSE
+        xx = np.atleast_2d(np.linspace(0, 10, 1000)).T
+        xx = xx.astype(np.float32)
+
+        # fit to median
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.2, subsample=0.9, loss="smth_quantile", alpha=0.5)
+        gbt.train(X, y, n_estimators=350)
+        y_median = gbt.predict(xx)
+
+        # lower
+        gbt.alpha = 0.1
+        gbt.train(X, y, n_estimators=350)
+        y_lower = gbt.predict(xx)
+
+        # upper
+        gbt.alpha = 0.9
+        gbt.train(X, y, n_estimators=350)
+        y_upper = gbt.predict(xx)
+
+        # check avg vals of percentile prediction bands
+        self.assertTrue((np.mean(y_lower) < np.mean(y_median) < np.mean(y_upper)))
+
+        if MPL:
+            # Plot the function, the prediction and the 90% confidence interval based on
+            # the MSE
+            fig = plt.figure()
+            plt.plot(xx, f(xx), 'g:', label=u'$f(x) = x\,\sin(x)$')
+            plt.plot(X, y, 'b.', markersize=2, label=u'Observations')
+            plt.plot(xx, y_median, 'r-', label=u'Prediction')
+            plt.plot(xx, y_upper, 'k-')
+            plt.plot(xx, y_lower, 'k-')
+            plt.fill(np.concatenate([xx, xx[::-1]]),
+                     np.concatenate([y_upper, y_lower[::-1]]),
+                     alpha=.5, fc='b', ec='None', label='90% prediction interval')
+            plt.xlabel('$x$')
+            plt.ylabel('$f(x)$')
+            plt.ylim(-10, 20)
+            plt.legend(loc='upper left')
+            plt.savefig('1d_boosted_regression_smth_quantile_ex.png')
+            plt.close()
 
     def test2dBoostedReg(self):
         iters = 100

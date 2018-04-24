@@ -22,6 +22,8 @@ class GBRTmodel(object):
     Implemented loss functions:
     - huber
     - squared-error
+    - quantile
+    - smoothed quantile
     """
     def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', alpha=0.5, **kwargs):
         """!
@@ -56,7 +58,7 @@ class GBRTmodel(object):
 
         # Loss class instance
         self._alpha = alpha
-        self._L = FLoss(loss, tau=self._alpha)
+        self._L = FLoss(loss, tau=self._alpha, **kwargs)
 
     def predict(self, testX):
         """!
