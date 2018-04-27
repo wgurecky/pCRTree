@@ -5,6 +5,7 @@
 # \author William Gurecky
 ##
 import numpy as np
+from itertools import islice
 from scipy.optimize import minimize
 from dtree.regress import RegTree
 from boosting.loss import FLoss
@@ -62,16 +63,31 @@ class GBRTmodel(object):
         """!
         @brief Evaluate gradient boosted regression tree model.
         @param testX (nd_array) evaluate model at these points
+        @return np_1darry model predictions at testX
         """
+        # get final prediciton in boosted predictions iterable
+        sum_trees_prediction = list(islice(self.staged_predict(testX),
+                                           self.n_estimators-1,
+                                           self.n_estimators))
+        return sum_trees_prediction[0]
+
+    def staged_predict(self, testX, **kwargs):
+        """!
+        @brief Boosted tree model generator.  Generatees truncated
+        boosted models including up to ntree_limit trees.
+        @param testX (nd_array) evaluate model at these points
+        @return iterable
+        """
+        n_estimators = kwargs.get("ntree_limit", self.n_estimators)
         if len(np.shape(testX)) == 1:
             testX = np.array([testX]).T
         fHat = np.zeros(testX.shape[0])
-        for weight, tree in zip(self._treeWeights, self._trees):
+        for weight, tree in zip(self._treeWeights[:n_estimators], self._trees[:n_estimators]):
             fHat += weight * tree.predict(testX)
-        if self._scale:
-            return self.trans.inverse_transform(fHat.reshape(-1, 1))[: ,0]
-        else:
-            return fHat
+            if self._scale:
+                yield self.trans.inverse_transform(fHat.reshape(-1, 1))[: ,0]
+            else:
+                yield fHat
 
     @property
     def scale(self):
@@ -208,6 +224,10 @@ class GBRTmodel(object):
             return self._L.var(yTest, self.predict(xTest))
         else:
             return None
+
+    @property
+    def n_estimators(self):
+        return len(self._trees)
 
     @property
     def feature_importances_(self):
