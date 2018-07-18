@@ -157,7 +157,7 @@ class TestGradBoosting(unittest.TestCase):
         def f(x):
             return x * np.sin(x)
 
-        X = np.atleast_2d(np.linspace(0, 10.0, 50).repeat(20)).T
+        X = np.atleast_2d(np.linspace(0, 10.0, 50).repeat(100)).T
         X = X.astype(np.float32)
         y = f(X).ravel()
 
