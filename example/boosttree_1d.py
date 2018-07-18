@@ -17,7 +17,7 @@ try:
 except: pass
 
 
-def example_qunatile_reg_loop(q_tile=0.9, n_loop=2):
+def example_qunatile_reg_loop(q_tile=0.9, n_loop=30):
         np.random.seed(1)
         def f(x):
             heaviside = np.heaviside(x - 5.0, 1.0) * 12.
@@ -86,11 +86,12 @@ def example_qunatile_reg_loop(q_tile=0.9, n_loop=2):
         plt.plot(xx, np.average(q_predict_list, axis=0), \
                 'r-', label=r'$\hat \bar q_{' + str(q_tile) + '}$', alpha=1.0, lw=1.0)
         # true fn
-        plt.plot(xx, f(xx), 'g', label=u'$f(x) = x\,\sin(x) + 12 H(x-5)$')
+        plt.plot(xx, f(xx), 'k', label=u'$f(x) = x\,\sin(x) + 12 H(x-5)$')
         # true quantile
-        plt.plot(xx, q_tile_true, 'b', label=u'$q_{' + str(q_tile) + '}[f(x)$]')
+        plt.plot(xx, q_tile_true, 'b', label=u'$q_{' + str(q_tile) + '}[f(x) + \epsilon]$')
         # observations
-        plt.plot(X, y, 'b.', markersize=2, label=u'Observations', alpha=0.3)
+        plt.plot(X, y, 'b.', markersize=2, label=r'Obs: $f(x) + \epsilon ; \ \ \epsilon \sim \mathcal{N}(0, 2)$', alpha=0.3)
+        plt.ylim(0.0, 36.0)
         plt.xlabel('$x$')
         plt.ylabel('$f(x)$')
         # plt.ylim(-10, 20)
@@ -110,6 +111,18 @@ def example_qunatile_reg_loop(q_tile=0.9, n_loop=2):
         # draw results from theory distribution
         th_flat_q = np.random.normal(0, std_dev_q_theory, size=np.size(flat_q))
 
+        # std devs of model residuals
+        std_dev_q = np.std(flat_q)
+        std_dev_sk_q = np.std(sk_flat_q)
+
+        # compute p-vals
+        p_q = 1. - scipy.stats.f.cdf((std_dev_q ** 2.) / (std_dev_q_theory ** 2.), \
+                50 * n_samples_per_edit * n_loop - 1, 50 * n_samples_per_edit * n_loop - 1)
+        p_sk_q = 1. - scipy.stats.f.cdf((std_dev_sk_q ** 2.) / (std_dev_q_theory ** 2.), \
+                50 * n_samples_per_edit * n_loop - 1, 50 * n_samples_per_edit * n_loop - 1)
+        print("P-val pCRTree for q_ %f: %f" % (q_tile, p_q))
+        print("P-val sklearn for q_ %f: %f" % (q_tile, p_sk_q))
+
         with sns.axes_style("whitegrid", {"grid.linestyle": '--', "grid.alpha": 0.6}):
             sns.set_palette(sns.diverging_palette(250, 15, s=70, l=45, n=3, center="light"))
             sns.set_color_codes()
@@ -126,7 +139,7 @@ def example_qunatile_reg_loop(q_tile=0.9, n_loop=2):
             ax1.plot(xx, np.average(sk_q_residual_list, axis=0), 'r', lw=1, label='sk-learn')
             ax1.axhline(0.0, c='k', lw=0.5)
             ax1.set_xlabel('$x$')
-            ax1.set_ylabel(r"Residual $\hat q_{" + str(q_tile) + "} - q_{" + str(q_tile) + "}[f(x)] $")
+            ax1.set_ylabel(r"Residual $\hat q_{" + str(q_tile) + "} - q_{" + str(q_tile) + "}[f(x) + \epsilon] $")
 
             # create labels for violin plot
             mc_tag_list = ['pCRTree' for item in flat_q]
@@ -135,11 +148,11 @@ def example_qunatile_reg_loop(q_tile=0.9, n_loop=2):
             bmass_sample_dframe = pd.DataFrame.from_dict({"": np.concatenate((flat_q, th_flat_q, sk_flat_q, )),
                                                           'Method': np.array(mc_tag_list + th_tag_list + imp_tag_list )})
             sns.violinplot(x="Method", y="", data=bmass_sample_dframe, split=True, ax=ax2)
-            ax1.set_title(r"$SE[q_{" + str(q_tile) + "}]_{th}$ = %0.3f " % (std_dev_q_theory) + \
+            ax2.set_title(r"$SE[q_{" + str(q_tile) + "}]_{th}$ = %0.3f " % (std_dev_q_theory) + \
                           "\n" + \
                           r"$SE[q_{" + str(q_tile) + "}]_{pCRTree}$ = %0.3f" % (np.std(flat_q)) + \
                           "\n" + \
-                          r"$SE[q_{" + str(q_tile) + "}]_{sk-learn}$ = %0.3f" % (np.std(sk_flat_q)), fontsize=10)
+                          r"$SE[q_{" + str(q_tile) + "}]_{sklearn}$ = %0.3f" % (np.std(sk_flat_q)), fontsize=10)
             ax1.legend()
             plt.tight_layout()
             plt.savefig('1d_boosted_regression_quantile_resid_' + str(q_tile) + '.png', dpi=120)
@@ -204,4 +217,8 @@ def example_qunatile_reg():
 
 
 if __name__ == "__main__":
-    example_qunatile_reg_loop()
+    sns.set_palette(sns.diverging_palette(250, 15, s=70, l=45, n=3, center="light"))
+    sns.set_color_codes()
+    with sns.axes_style("whitegrid", {"grid.linestyle": '--', "grid.alpha": 0.6}):
+        for q_tile in [0.5, 0.75, 0.90, 0.95]:
+            example_qunatile_reg_loop(q_tile)
