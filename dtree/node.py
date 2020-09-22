@@ -13,7 +13,7 @@ class BiNode(object):
     @brief Binary node object.  Can be a leaf node,
     or can point to two other nodes.
     """
-    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=4):
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=4, **kwargs):
         """!
         @param x nd_array of integers or floats shape = (Npts, D)
         @param y 1d_array of integers or floats
@@ -42,6 +42,11 @@ class BiNode(object):
         # predictor storage
         self._yhat = yhat
         self._spl, self._spd = None, None
+
+        # slopes
+        self._yhat_slope = None
+        self._yhat_intercept = None
+
 
     @property
     def spl(self):
@@ -123,7 +128,10 @@ class BiNode(object):
         else:
             # is leaf node
             xHat = testX
-            yHat = self._yhat * np.ones(len(testX))
+            if self._yhat_intercept is None:
+                yHat = self._yhat * np.ones(len(testX))
+            else:
+                yHat = (np.dot(self._yhat_slope, testX[:,int(self._spd)]) + self._yhat_intercept).flatten()
             return xHat, yHat, testXIdx
 
 
