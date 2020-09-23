@@ -24,13 +24,17 @@ class GBRTmodel(object):
     - huber
     - squared-error
     """
-    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', alpha=0.5, minSplitPts=5, **kwargs):
+    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', alpha=0.5, minSplitPts=4, minDataLeaf=2, **kwargs):
         """!
         @param max_depth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
             boosted iteration.
+        @param minSplitPts minimum number of points in node to be considered
+            for further splitting in the tree based weak learners
+        @param minDataLeaf minimum number of points required to form a new node in
+            a tree based weak learner
         @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("se", "huber", "quantile")
         @param alpha  (float)  target quantile value.
@@ -38,6 +42,7 @@ class GBRTmodel(object):
         """
         self.max_depth = max_depth
         self.minSplitPts = minSplitPts
+        self.minDataLeaf = minDataLeaf
         self.learning_rate = learning_rate
         self.subsample = subsample
         self.trans = StandardScaler()
@@ -194,7 +199,8 @@ class GBRTmodel(object):
             self._trees.append(self.genRegTree(self.x[sub_idx],
                                                self._L.gradLoss(self.y[sub_idx], self._F[sub_idx]),
                                                maxDepth=self.max_depth,
-                                               minSplitPts=self.minSplitPts
+                                               minSplitPts=self.minSplitPts,
+                                               minDataLeaf=self.minDataLeaf
                                                )
                               )
             self._trees[-1].fitTree()

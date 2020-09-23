@@ -11,7 +11,6 @@ except: pass
 
 
 def example_boosed_lin_reg_lin():
-        np.random.seed(1)
         def f(x):
             return x * 0.25 + 10.
 
@@ -31,7 +30,7 @@ def example_boosed_lin_reg_lin():
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(max_depth=1, learning_rate=0.10, subsample=0.8, loss="se", tree_method="lin", minSplitPts=10)
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.10, subsample=0.8, loss="se", tree_method="lin", minSplitPts=10, minDataLeaf=10)
         gbt.train(X, y, n_estimators=50)
         y_median = gbt.predict(xx)
 
@@ -40,8 +39,8 @@ def example_boosed_lin_reg_lin():
             # the MSE
             fig = plt.figure()
             plt.plot(X, y, 'b.', markersize=2, label=u'Observations', alpha=0.3)
-            plt.plot(xx, y_median, 'r-', label=r'$\hat q_{0.50}$')
-            plt.plot(xx, f(xx), 'g', label=u'$f(x) = x\,\sin(x) + 12 H(x-5)$')
+            plt.plot(xx, y_median, 'r-', label=r'$\hat \mu$')
+            plt.plot(xx, f(xx), 'g', label=u'$f(x) = 0.25x+10$')
             plt.xlabel('$x$')
             plt.ylabel('$f(x)$')
             # plt.ylim(-10, 20)
@@ -59,8 +58,8 @@ def example_boosed_lin_reg_lin():
             # the MSE
             fig = plt.figure()
             plt.plot(X, y, 'b.', markersize=2, label=u'Observations', alpha=0.3)
-            plt.plot(xx, y_median, 'r-', label=r'$\hat q_{0.50}$')
-            plt.plot(xx, f(xx), 'g', label=u'$f(x) = x\,\sin(x) + 12 H(x-5)$')
+            plt.plot(xx, y_median, 'r-', label=r'$\hat \mu$')
+            plt.plot(xx, f(xx), 'g', label=u'$f(x) = 0.25x+10$')
             plt.xlabel('$x$')
             plt.ylabel('$f(x)$')
             # plt.ylim(-10, 20)
@@ -70,13 +69,12 @@ def example_boosed_lin_reg_lin():
 
 
 def example_boosed_lin_reg_sin():
-        np.random.seed(1)
         def f(x):
             heavyside = np.heaviside(x - 5.0, 1.0) * 12.
             return x * np.sin(x) + heavyside + 10.
 
-        n_samples_per_edit = 2
-        X = np.atleast_2d(np.linspace(0, 10.0, 30).repeat(n_samples_per_edit)).T
+        n_samples_per_edit = 1
+        X = np.atleast_2d(np.linspace(0, 10.0, 220).repeat(n_samples_per_edit)).T
         X = X.astype(np.float32)
         y = f(X).ravel()
 
@@ -92,8 +90,8 @@ def example_boosed_lin_reg_sin():
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(max_depth=2, learning_rate=0.05, subsample=0.8, loss="se", tree_method="lin", minSplitPts=10)
-        gbt.train(X, y, n_estimators=125)
+        gbt = GBRTmodel(max_depth=2, learning_rate=0.02, subsample=0.5, loss="se", tree_method="lin", minSplitPts=20, minDataLeaf=25)
+        gbt.train(X, y, n_estimators=380)
         y_median = gbt.predict(xx)
 
         if MPL:

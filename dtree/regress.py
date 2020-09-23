@@ -13,7 +13,7 @@ class RegTree(BiNode):
     """!
     @brief Regression tree
     """
-    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5, **kwargs):
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=8, minDataLeaf=4, **kwargs):
         """!
         @param x nd_array of integers or floats shape = (Npts, D)
         @param y 1d_array of integers or floats
@@ -22,8 +22,9 @@ class RegTree(BiNode):
         @param maxDepth maximum number of levels in descission tree
         @param minSplitPts minimum number of points in node to be considered
             for further splitting.
+        @param minDataLeaf minimum number of points required to form a new node
         """
-        super(RegTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
+        super(RegTree, self).__init__(x, y, yhat, level, maxDepth, minSplitPts, minDataLeaf)
 
     def _regionFit(self, region_x, region_y, lossFn="squared"):
         """!
@@ -111,8 +112,7 @@ class RegTree(BiNode):
         # select the best possible split
         return splitErrors[bestSplitIdx]
 
-    @staticmethod
-    def internalEvalSplit(split, node_err, gain_measure):
+    def internalEvalSplit(self, split, node_err, gain_measure):
         eL, vL = regionFitJit(split[0][0], split[0][1])
         eR, vR = regionFitJit(split[1][0], split[1][1])
         eTot = eL + eR
@@ -127,12 +127,17 @@ class RegTree(BiNode):
             split_var = (1. / n_l) * 0.5 * eL + \
                         (1. / n_r) * 0.5 * eR
             gain = node_var - split_var
-        return [eTot, vL, vR, split[2], split[3], gain]
+        if len(split[0][1]) < self.minDataLeaf or \
+           len(split[1][1]) < self.minDataLeaf:
+            return [eTot+1e20, vL, vR, split[2], split[3], gain-1e20]
+        else:
+            return [eTot, vL, vR, split[2], split[3], gain]
 
 
 class RegTreeLin(RegTree):
-    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=5,  yhat_slope=None, yhat_intercept=None, spd=None, **kwargs):
-        super(RegTreeLin, self).__init__(x, y, yhat, level, maxDepth, minSplitPts)
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=8, minDataLeaf=4,
+                 yhat_slope=None, yhat_intercept=None, spd=None, **kwargs):
+        super(RegTreeLin, self).__init__(x, y, yhat, level, maxDepth, minSplitPts, minDataLeaf)
         self._yhat_slope = yhat_slope
         self._yhat_intercept = yhat_intercept
         self._spd = spd
