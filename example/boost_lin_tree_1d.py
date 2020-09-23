@@ -10,16 +10,14 @@ try:
 except: pass
 
 
-def example_boosed_lin_reg_lin():
-        def f(x):
-            return x * 0.25 + 10.
+def example_boosed_lin_reg_lin(f, plot_name='1d_boosted_regression_lin_lin_ex.png'):
 
         n_samples_per_edit = 1
         X = np.atleast_2d(np.linspace(0, 10.0, 80).repeat(n_samples_per_edit)).T
         X = X.astype(np.float32)
         y = f(X).ravel()
 
-        std_dev = 0.2
+        std_dev = 4.2
         noise = np.random.normal(0, std_dev, size=y.shape)
         y += noise
         y = y.astype(np.float32)
@@ -30,8 +28,8 @@ def example_boosed_lin_reg_lin():
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(max_depth=1, learning_rate=0.10, subsample=0.8, loss="se", tree_method="lin", minSplitPts=10, minDataLeaf=10)
-        gbt.train(X, y, n_estimators=50)
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.03, subsample=0.8, loss="se", tree_method="lin", minSplitPts=10, minDataLeaf=20)
+        gbt.train(X, y, n_estimators=400)
         y_median = gbt.predict(xx)
 
         if MPL:
@@ -45,12 +43,12 @@ def example_boosed_lin_reg_lin():
             plt.ylabel('$f(x)$')
             # plt.ylim(-10, 20)
             plt.legend(loc='upper left')
-            plt.savefig('1d_boosted_regression_lin_lin_ex.png', dpi=120)
+            plt.savefig('lin_' + plot_name + '.png', dpi=120)
             plt.close()
 
         # fit to median
-        gbt = GBRTmodel(max_depth=1, learning_rate=0.10, subsample=0.8, loss="se", tree_method="cart", minSplitPts=10)
-        gbt.train(X, y, n_estimators=50)
+        gbt = GBRTmodel(max_depth=1, learning_rate=0.03, subsample=0.8, loss="se", tree_method="cart", minSplitPts=4)
+        gbt.train(X, y, n_estimators=400)
         y_median = gbt.predict(xx)
 
         if MPL:
@@ -64,7 +62,7 @@ def example_boosed_lin_reg_lin():
             plt.ylabel('$f(x)$')
             # plt.ylim(-10, 20)
             plt.legend(loc='upper left')
-            plt.savefig('1d_boosted_regression_const_lin_ex.png', dpi=120)
+            plt.savefig('const_' + plot_name + '.png', dpi=120)
             plt.close()
 
 
@@ -90,7 +88,7 @@ def example_boosed_lin_reg_sin():
         xx = xx.astype(np.float32)
 
         # fit to median
-        gbt = GBRTmodel(max_depth=2, learning_rate=0.02, subsample=0.5, loss="se", tree_method="lin", minSplitPts=20, minDataLeaf=25)
+        gbt = GBRTmodel(max_depth=2, learning_rate=0.01, subsample=0.5, loss="se", tree_method="lin", minSplitPts=20, minDataLeaf=25)
         gbt.train(X, y, n_estimators=380)
         y_median = gbt.predict(xx)
 
@@ -110,5 +108,19 @@ def example_boosed_lin_reg_sin():
 
 
 if __name__ == "__main__":
-    example_boosed_lin_reg_lin()
+
+    def f(x):
+        #y = np.zeros(len(x))
+        #y[np.asarray(x < 5).flatten()] = x[x < 5] * 0.25 + 10.
+        #y[np.asarray(x >= 5).flatten()] = x[x >= 5] * -0.25 + 12.
+        y = x ** 2.0
+        return y
+    example_boosed_lin_reg_lin(f, 'pos_quadratic')
+    def f(x):
+        #y = np.zeros(len(x))
+        #y[np.asarray(x < 5).flatten()] = x[x < 5] * 0.25 + 10.
+        #y[np.asarray(x >= 5).flatten()] = x[x >= 5] * -0.25 + 12.
+        y = -x ** 2.0
+        return y
+    example_boosed_lin_reg_lin(f, 'neg_quadratic')
     example_boosed_lin_reg_sin()

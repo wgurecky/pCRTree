@@ -206,5 +206,5 @@ def linregress_jit(x, y):
 def regionFitLin(region_x, region_y, dsplit):
     # fit slope only for region that was split on before
     yhat_slope, yhat_intercept = linregress_jit(region_x[:,int(dsplit)], region_y)
-    rsse = np.sum((region_y - (yhat_slope * region_x + yhat_intercept)) ** 2)
+    rsse = np.sum((region_y - (yhat_slope * region_x[:,int(dsplit)] + yhat_intercept)) ** 2)
     return rsse, yhat_slope, yhat_intercept
