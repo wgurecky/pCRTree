@@ -13,7 +13,7 @@ class BiNode(object):
     @brief Binary node object.  Can be a leaf node,
     or can point to two other nodes.
     """
-    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=4):
+    def __init__(self, x, y, yhat=None, level=0, maxDepth=3, minSplitPts=8, minDataLeaf=4, **kwargs):
         """!
         @param x nd_array of integers or floats shape = (Npts, D)
         @param y 1d_array of integers or floats
@@ -22,6 +22,7 @@ class BiNode(object):
         @param maxDepth maximum number of levels in descission tree
         @param minSplitPts minimum number of points in node to be considered
             for further splitting.
+        @param minDataLeaf minimum number of points required to form a new node
         """
         # left and right node storage
         self._nodes = (None, None)
@@ -29,6 +30,7 @@ class BiNode(object):
         self.level = level
         self.maxDepth = maxDepth
         self.minSplitPts = minSplitPts
+        self.minDataLeaf = minDataLeaf
         # Make x 2D array
         if len(x.shape) == 1:
             x = np.array([x]).T
@@ -42,6 +44,11 @@ class BiNode(object):
         # predictor storage
         self._yhat = yhat
         self._spl, self._spd = None, None
+
+        # slopes
+        self._yhat_slope = None
+        self._yhat_intercept = None
+
 
     @property
     def spl(self):
@@ -123,7 +130,10 @@ class BiNode(object):
         else:
             # is leaf node
             xHat = testX
-            yHat = self._yhat * np.ones(len(testX))
+            if self._yhat_intercept is None:
+                yHat = self._yhat * np.ones(len(testX))
+            else:
+                yHat = (np.dot(self._yhat_slope, testX[:,int(self._spd)]) + self._yhat_intercept).flatten()
             return xHat, yHat, testXIdx
 
 

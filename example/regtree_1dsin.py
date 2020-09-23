@@ -3,7 +3,7 @@
 # \brief Trains a single regression tree on a
 # sin() curve (single dimension).
 ##
-from dtree.regress import RegTree
+from dtree.regress import RegTree, RegTreeLin
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -33,7 +33,36 @@ def main():
     plt.plot(xTest, yhat3, label="Tree Depth=3")
     plt.legend()
     plt.savefig('1d_regression_ex.png')
+    plt.close()
+
+
+def exLin():
+    # run simple 1d regression tree example
+    n = 100
+    x = np.linspace(0, 2 * np.pi, n)
+    y = np.sin(x)
+    yNoise = np.random.uniform(0, 0.1, n)
+    y = y + yNoise
+    regressionTree = RegTreeLin(x, y, maxDepth=4)
+    regressionTree.fitTree()
+    regressionTree3 = RegTreeLin(x, y, maxDepth=2)
+    regressionTree3.fitTree()
+
+    # predict
+    xTest = np.linspace(0, 2 * np.pi, n * 2)
+    yhat = regressionTree.predict(xTest)
+    yhat3 = regressionTree3.predict(xTest)
+
+    # plot
+    plt.figure()
+    plt.plot(x, y, label="Train Data")
+    plt.plot(xTest, yhat, label="Tree Depth=4")
+    plt.plot(xTest, yhat3, label="Tree Depth=2")
+    plt.legend()
+    plt.savefig('1d_regression_lin_ex.png')
+    plt.close()
 
 
 if __name__ == "__main__":
     main()
+    exLin()

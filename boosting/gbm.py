@@ -7,7 +7,7 @@
 import numpy as np
 from itertools import islice
 from scipy.optimize import minimize
-from dtree.regress import RegTree
+from dtree.regress import RegTree, RegTreeLin
 from boosting.loss import FLoss
 from sklearn.preprocessing import StandardScaler
 
@@ -24,19 +24,25 @@ class GBRTmodel(object):
     - huber
     - squared-error
     """
-    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', alpha=0.5, **kwargs):
+    def __init__(self, max_depth=3, learning_rate=1.0, subsample=1.0, loss='se', alpha=0.5, minSplitPts=4, minDataLeaf=2, **kwargs):
         """!
         @param max_depth  Maximum depth of each weak learner in the model.
             Equal to number of possible interactions captured by each tree in the GBRT.
         @param learning_rate  Scale the influence of each tree in model.
         @param subsample  Fraction of avalible data used for training in any given
             boosted iteration.
+        @param minSplitPts minimum number of points in node to be considered
+            for further splitting in the tree based weak learners
+        @param minDataLeaf minimum number of points required to form a new node in
+            a tree based weak learner
         @param loss  (str) Target function to minimize at each iteration of boosting
             string in ("se", "huber", "quantile")
         @param alpha  (float)  target quantile value.
             Only used for "quantile" loss, otherwise this parameter is ignored.
         """
         self.max_depth = max_depth
+        self.minSplitPts = minSplitPts
+        self.minDataLeaf = minDataLeaf
         self.learning_rate = learning_rate
         self.subsample = subsample
         self.trans = StandardScaler()
@@ -51,13 +57,14 @@ class GBRTmodel(object):
         self.y = np.array([])
 
         # normalization
-        self._scale = False
-        if kwargs.get("scale", True):
-            self._scale = True
+        self._scale = kwargs.get("scale", False)
 
         # Loss class instance
         self._alpha = alpha
         self._L = FLoss(loss, tau=self._alpha)
+
+        # Weak learner method
+        self.tree_method = kwargs.get("tree_method", "cart")
 
     def predict(self, testX):
         """!
@@ -85,7 +92,9 @@ class GBRTmodel(object):
         for weight, tree in zip(self._treeWeights[:n_estimators], self._trees[:n_estimators]):
             fHat += weight * tree.predict(testX)
             if self._scale:
-                yield self.trans.inverse_transform(fHat.reshape(-1, 1))[: ,0]
+                out = self.trans.inverse_transform(fHat.reshape(-1, 1))[: ,0]
+                print(out)
+                yield out
             else:
                 yield fHat
 
@@ -127,6 +136,14 @@ class GBRTmodel(object):
     @property
     def trees(self):
         return self._trees
+
+    def genRegTree(self, *args, **kwargs):
+        if self.tree_method == "cart":
+            return RegTree(*args, **kwargs)
+        elif self.tree_method == "lin":
+            return RegTreeLin(*args, **kwargs)
+        else:
+            raise NotImplementedError("Weak learner type not implemented")
 
     def train(self, x, y, n_estimators=5, warmStart=0, **kwargs):
         """!
@@ -179,10 +196,12 @@ class GBRTmodel(object):
             # def sub sample training set
             sub_idx = np.random.choice([True, False], len(y), p=[self.subsample, 1. - self.subsample])
             # fit learner to pseudo-residuals
-            self._trees.append(RegTree(self.x[sub_idx],
-                                       self._L.gradLoss(self.y[sub_idx], self._F[sub_idx]),
-                                       maxDepth=self.max_depth,
-                                       )
+            self._trees.append(self.genRegTree(self.x[sub_idx],
+                                               self._L.gradLoss(self.y[sub_idx], self._F[sub_idx]),
+                                               maxDepth=self.max_depth,
+                                               minSplitPts=self.minSplitPts,
+                                               minDataLeaf=self.minDataLeaf
+                                               )
                               )
             self._trees[-1].fitTree()
             # define minimization problem
@@ -190,7 +209,7 @@ class GBRTmodel(object):
             lossSum = lambda gamma: np.sum(self._L.loss(self.y, self._F + gamma * pre_pred_loss))
             # find optimal step size in direction of steepest descent
             res = minimize(lossSum, 0.8, method='SLSQP')
-            if "successfully." not in res.message:
+            if "successfully" not in res.message:
                 print(res.message)
             gamma_ = res.x[0]
             self._treeWeights.append(self.learning_rate * gamma_)

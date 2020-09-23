@@ -232,17 +232,17 @@ class TestGradBoosting(unittest.TestCase):
             self.assertTrue((np.mean(sk_zHat - zHat) < 0.01))
             # check mean squared error
             mse = ((sk_zHat - zHat) ** 2.0).mean()
-            self.assertTrue((mse < 0.02))
-            self.assertTrue((np.abs((np.max(self.y) - np.max(sk_zHat))) / np.mean(self.y) < 0.05))
-            self.assertTrue((np.abs((np.min(self.y) - np.min(sk_zHat))) / np.mean(self.y) < 0.05))
+            self.assertLess(mse, 0.03)
+            self.assertLess(np.abs((np.max(self.y) - np.max(sk_zHat))) / np.mean(self.y), 0.05)
+            self.assertLess(np.abs((np.min(self.y) - np.min(sk_zHat))) / np.mean(self.y), 0.05)
 
         # print importances
         print("Feature Importances")
         print(gbt.feature_importances_)
 
         # check min and max predictions
-        self.assertTrue((np.abs((np.max(self.y) - np.max(zHat))) / np.mean(self.y) < 0.05))
-        self.assertTrue((np.abs((np.min(self.y) - np.min(zHat))) / np.mean(self.y) < 0.05))
+        self.assertLess(np.abs((np.max(self.y) - np.max(zHat))) / np.mean(self.y), 0.06)
+        self.assertLess(np.abs((np.min(self.y) - np.min(zHat))) / np.mean(self.y), 0.06)
 
         # plot
         x1grid = np.linspace(xTest[:, 0].min(), xTest[:, 0].max(), 200)
