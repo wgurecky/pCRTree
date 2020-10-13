@@ -9,7 +9,6 @@ from itertools import islice
 from scipy.optimize import minimize
 from dtree.regress import RegTree, RegTreeLin
 from boosting.loss import FLoss
-from sklearn.preprocessing import StandardScaler
 
 
 class GBRTmodel(object):
@@ -45,7 +44,6 @@ class GBRTmodel(object):
         self.minDataLeaf = minDataLeaf
         self.learning_rate = learning_rate
         self.subsample = subsample
-        self.trans = StandardScaler()
 
         # internal storage (write out to external file on request)
         self._trees = [None]
@@ -55,9 +53,6 @@ class GBRTmodel(object):
         # training data
         self.x = np.array([[]])
         self.y = np.array([])
-
-        # normalization
-        self._scale = kwargs.get("scale", False)
 
         # Loss class instance
         self._alpha = alpha
@@ -91,23 +86,7 @@ class GBRTmodel(object):
         fHat = np.zeros(testX.shape[0])
         for weight, tree in zip(self._treeWeights[:n_estimators], self._trees[:n_estimators]):
             fHat += weight * tree.predict(testX)
-            if self._scale:
-                out = self.trans.inverse_transform(fHat.reshape(-1, 1))[: ,0]
-                print(out)
-                yield out
-            else:
-                yield fHat
-
-    @property
-    def scale(self):
-        return self._scale
-
-    @scale.setter
-    def scale(self, sc):
-        if sc:
-            self._scale = sc
-        else:
-            self._scale = False
+            yield fHat
 
     @property
     def alpha(self):
@@ -185,10 +164,7 @@ class GBRTmodel(object):
             print("========================================")
         # Reset model
         self.x = x
-        if self._scale:
-            self.y = self.trans.fit_transform(y.reshape(-1, 1))[:, 0]
-        else:
-            self.y = y
+        self.y = y
         self._trees = [ConstModel(x, y)]
         self._treeWeights = [1.0]
         self._F = self._trees[0].predict(self.x)
